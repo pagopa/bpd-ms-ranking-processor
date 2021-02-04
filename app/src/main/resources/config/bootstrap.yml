@@ -1,0 +1,3 @@
+spring:
+  application:
+    name: "bpd-ms-ranking-processor-app"
