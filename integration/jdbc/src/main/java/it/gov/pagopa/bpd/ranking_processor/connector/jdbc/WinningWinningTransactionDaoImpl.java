@@ -1,18 +1,24 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
+import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.RowMapperResultSetExtractor;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
 import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
+import java.util.EnumMap;
 import java.util.List;
 
 @Service
@@ -69,21 +75,52 @@ class WinningWinningTransactionDaoImpl implements WinningTransactionDao {
             " and payment.merchant_id_s = transfer.merchant_id_s" +
             " and payment.terminal_id_s = transfer.terminal_id_s)" +
             " or (nullif(transfer.correlation_id_s, '') is not null" +
-            " and payment.correlation_id_s = transfer.correlation_id_s)));";
+            " and payment.correlation_id_s = transfer.correlation_id_s)))";
 
-    private static final String FIND_PARTIAL_TRANSFER_TRX_TO_PROCESS_QUERY = "";
+    private static final String FIND_PARTIAL_TRANSFER_TRX_TO_PROCESS_QUERY = ""; //TODO: insert SQL
 
-    private final JdbcTemplate transactionJdbcTemplate;
-    private final RowMapperResultSetExtractor<WinningTransaction> winningTransactionResultSetExtractor;
+    private static final String UPDATE_PROCESSED_TRX_SQL = "update" +
+            " bpd_winning_transaction.bpd_winning_transaction" +
+            " set" +
+            " elab_ranking_b = true" +
+            " where" +
+            " id_trx_acquirer_s = :idTrxAcquirer" +
+            " and wt.acquirer_c = :acquirerCode" +
+            " and wt.trx_timestamp_t = :trxDate" +
+            " and wt.operation_type_c = :operationType" +
+            " and wt.acquirer_id_s = :acquirerId";
+
+    private final JdbcTemplate jdbcTemplate;
+    private final RowMapperResultSetExtractor<WinningTransaction> findTrxToProcessResultSetExtractor;
+
+    private final EnumMap<TransactionType, PreparedStatementCreator> trxType2StatemantCreatorMap;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
 
     @Autowired
-    public WinningWinningTransactionDaoImpl(@Qualifier("transactionJdbcTemplate") JdbcTemplate transactionJdbcTemplate) {
-        winningTransactionResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionMapper());
-        this.transactionJdbcTemplate = transactionJdbcTemplate;
+    public WinningWinningTransactionDaoImpl(@Qualifier("transactionJdbcTemplate") JdbcTemplate jdbcTemplate,
+                                            @Value("${winning-transaction.extraction-query.lock.enable}") boolean lockEnabled) {
+        this.jdbcTemplate = jdbcTemplate;
+        namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
+        findTrxToProcessResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionMapper());
+        trxType2StatemantCreatorMap = new EnumMap<>(TransactionType.class);
+        trxType2StatemantCreatorMap.put(TransactionType.PAYMENT,
+                connection -> connection.prepareStatement(lockEnabled
+                        ? FIND_PAYMENT_TRX_TO_PROCESS_QUERY + " FOR UPDATE SKIP LOCKED"
+                        : FIND_PAYMENT_TRX_TO_PROCESS_QUERY));
+        trxType2StatemantCreatorMap.put(TransactionType.TOTAL_TRANSFER,
+                connection -> connection.prepareStatement(lockEnabled
+                        ? FIND_TOTAL_TRANSFER_TRX_TO_PROCESS_QUERY + " FOR UPDATE SKIP LOCKED"
+                        : FIND_TOTAL_TRANSFER_TRX_TO_PROCESS_QUERY));
+        trxType2StatemantCreatorMap.put(TransactionType.PARTIAL_TRANSFER,
+                connection -> connection.prepareStatement(lockEnabled
+                        ? FIND_PARTIAL_TRANSFER_TRX_TO_PROCESS_QUERY + " FOR UPDATE SKIP LOCKED"
+                        : FIND_PARTIAL_TRANSFER_TRX_TO_PROCESS_QUERY));
     }
 
+
     @Override
-    public List<WinningTransaction> findTransactionToProcess(Long awardPeriodId, WinningTransaction.TransactionType transactionType) {
+    public List<WinningTransaction> findTransactionToProcess(Long awardPeriodId, TransactionType transactionType) {
         if (log.isTraceEnabled()) {
             log.trace("WinningWinningTransactionDaoImpl.findTransactionToProcess");
         }
@@ -91,24 +128,16 @@ class WinningWinningTransactionDaoImpl implements WinningTransactionDao {
             log.debug("awardPeriodId = {}, transactionType = {}", awardPeriodId, transactionType);
         }
 
-        PreparedStatementCreator statementCreator;
-        switch (transactionType) {
-            case PAYMENT:
-                statementCreator = connection -> connection.prepareStatement(FIND_PAYMENT_TRX_TO_PROCESS_QUERY);
-                break;
-            case TOTAL_TRANSFER:
-                statementCreator = connection -> connection.prepareStatement(FIND_TOTAL_TRANSFER_TRX_TO_PROCESS_QUERY);
-                break;
-            case PARTIAL_TRANSFER:
-                statementCreator = connection -> connection.prepareStatement(FIND_PARTIAL_TRANSFER_TRX_TO_PROCESS_QUERY);
-                break;
-            default:
-                throw new IllegalArgumentException(String.format("Invalid transaction type: %s", transactionType));
-        }
-
-        return transactionJdbcTemplate.query(statementCreator,
+        return jdbcTemplate.query(trxType2StatemantCreatorMap.get(transactionType),
                 preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
-                winningTransactionResultSetExtractor);
+                findTrxToProcessResultSetExtractor);
+    }
+
+
+    @Override
+    public int[] updateProcessedTransaction(final List<WinningTransaction.WinningTransactionId> winningTransactionIds) {
+        SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(winningTransactionIds.toArray());
+        return namedParameterJdbcTemplate.batchUpdate(UPDATE_PROCESSED_TRX_SQL, batchValues);
     }
 
 

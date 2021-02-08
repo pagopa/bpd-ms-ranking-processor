@@ -8,4 +8,6 @@ public interface WinningTransactionDao {
 
     List<WinningTransaction> findTransactionToProcess(Long awardPeriodId, WinningTransaction.TransactionType transactionType);
 
+    int[] updateProcessedTransaction(List<WinningTransaction.WinningTransactionId> winningTransactionIds);
+
 }
