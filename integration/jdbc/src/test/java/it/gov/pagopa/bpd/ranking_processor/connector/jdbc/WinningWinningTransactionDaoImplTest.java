@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.jdbc.core.*;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
@@ -62,16 +63,50 @@ public class WinningWinningTransactionDaoImplTest extends BaseTest {
 
         @Test
         public void mapRowOK() throws SQLException {
+            WinningTransaction winningTransaction = WinningTransaction.builder()
+                    .idTrxAcquirer("idTrxAcquirer")
+                    .acquirerCode("acquirerCode")
+                    .trxDate(OffsetDateTime.now())
+                    .operationType("operationType")
+                    .acquirerId("acquirerId")
+                    .fiscalCode("fiscalCode")
+                    .amount(BigDecimal.TEN)
+                    .score(BigDecimal.ONE)
+                    .build();
+
             ResultSet resultSet = Mockito.mock(ResultSet.class);
             try {
+                Mockito.when(resultSet.getString("id_trx_acquirer_s"))
+                        .thenReturn(winningTransaction.getIdTrxAcquirer());
+                Mockito.when(resultSet.getString("acquirer_c"))
+                        .thenReturn(winningTransaction.getAcquirerCode());
                 Mockito.when(resultSet.getString("trx_timestamp_t"))
-                        .thenReturn(OffsetDateTime.now().toString());
+                        .thenReturn(winningTransaction.getTrxDate().toString());
+                Mockito.when(resultSet.getString("operation_type_c"))
+                        .thenReturn(winningTransaction.getOperationType());
+                Mockito.when(resultSet.getString("acquirer_id_s"))
+                        .thenReturn(winningTransaction.getAcquirerId());
+                Mockito.when(resultSet.getString("fiscal_code_s"))
+                        .thenReturn(winningTransaction.getFiscalCode());
+                Mockito.when(resultSet.getBigDecimal("amount_i"))
+                        .thenReturn(winningTransaction.getAmount());
+                Mockito.when(resultSet.getBigDecimal("score_n"))
+                        .thenReturn(winningTransaction.getScore());
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
                 Assert.fail(throwables.getMessage());
             }
 
-            winningTransactionMapper.mapRow(resultSet, 0);
+            WinningTransaction result = winningTransactionMapper.mapRow(resultSet, 0);
+            Assert.assertNotNull(result);
+            Assert.assertEquals(winningTransaction.getIdTrxAcquirer(), result.getIdTrxAcquirer());
+            Assert.assertEquals(winningTransaction.getAcquirerCode(), result.getAcquirerCode());
+            Assert.assertEquals(winningTransaction.getTrxDate(), result.getTrxDate());
+            Assert.assertEquals(winningTransaction.getOperationType(), result.getOperationType());
+            Assert.assertEquals(winningTransaction.getAcquirerId(), result.getAcquirerId());
+            Assert.assertEquals(winningTransaction.getFiscalCode(), result.getFiscalCode());
+            Assert.assertEquals(winningTransaction.getAmount(), result.getAmount());
+            Assert.assertEquals(winningTransaction.getScore(), result.getScore());
         }
 
         @Test(expected = DateTimeParseException.class)
