@@ -8,18 +8,13 @@ import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
-class TransactionDaoImpl implements TransactionDao {
+class CitizenRankingDaoImpl implements CitizenRankingDao {
 
     private final JdbcTemplate citizenJdbcTemplate;
-    private final JdbcTemplate transactionJdbcTemplate;
 
     @Autowired
-    public TransactionDaoImpl(
-            @Qualifier("citizenJdbcTemplate") JdbcTemplate citizenJdbcTemplate,
-            @Qualifier("transactionJdbcTemplate") JdbcTemplate transactionJdbcTemplate) {
+    public CitizenRankingDaoImpl(@Qualifier("citizenJdbcTemplate") JdbcTemplate citizenJdbcTemplate) {
         this.citizenJdbcTemplate = citizenJdbcTemplate;
-        this.transactionJdbcTemplate = transactionJdbcTemplate;
     }
-
 
 }

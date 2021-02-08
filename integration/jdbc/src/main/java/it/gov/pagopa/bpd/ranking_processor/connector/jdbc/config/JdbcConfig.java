@@ -10,7 +10,7 @@ import javax.sql.DataSource;
 @Configuration
 @PropertySources({
         @PropertySource("classpath:config/citizenJdbcConfig.properties"),
-        @PropertySource("classpath:config/transactionJdbcConfig.properties")
+        @PropertySource("classpath:config/winningTransactionJdbcConfig.properties")
 })
 class JdbcConfig {
 
@@ -34,21 +34,41 @@ class JdbcConfig {
         return new DataSourceProperties();
     }
 
-    @Bean("transactionJdbcTemplate")
-    public JdbcTemplate transactionJdbcTemplate() {
-        return new JdbcTemplate(transactionDataSource());
+    @Bean("winningTransactionJdbcTemplate")
+    public JdbcTemplate winningTransactionJdbcTemplate() {
+        return new JdbcTemplate(winningTransactionDataSource());
     }
 
-    @Bean(name = "transactionDataSource")
-    @ConfigurationProperties(prefix = "transaction.spring.datasource.hikari")
-    public DataSource transactionDataSource() {
-        return transactionDataSourceProperties().initializeDataSourceBuilder().build();
+    @Bean(name = "winningTransactionDataSource")
+    @ConfigurationProperties(prefix = "winning-transaction.spring.datasource.hikari")
+    public DataSource winningTransactionDataSource() {
+        return winningTransactionDataSourceProperties().initializeDataSourceBuilder().build();
     }
 
-    @Bean(name = "transactionDataSourceProperties")
-    @ConfigurationProperties("transaction.spring.datasource")
-    public DataSourceProperties transactionDataSourceProperties() {
+    @Bean(name = "winningTransactionDataSourceProperties")
+    @ConfigurationProperties("winning-transaction.spring.datasource")
+    public DataSourceProperties winningTransactionDataSourceProperties() {
         return new DataSourceProperties();
     }
+
+
+//    @Bean
+//    public UserTransaction userTransaction() throws Throwable {
+//        UserTransactionImp userTransactionImp = new UserTransactionImp();
+//        userTransactionImp.setTransactionTimeout(1000);
+//        return userTransactionImp;
+//    }
+//
+//    @Bean(initMethod = "init", destroyMethod = "close")
+//    public TransactionManager transactionManager() throws Throwable {
+//        UserTransactionManager userTransactionManager = new UserTransactionManager();
+//        userTransactionManager.setForceShutdown(false);
+//        return userTransactionManager;
+//    }
+//
+//    @Bean
+//    public PlatformTransactionManager platformTransactionManager() throws Throwable {
+//        return new JtaTransactionManager(userTransaction(), transactionManager());
+//    }
 
 }
