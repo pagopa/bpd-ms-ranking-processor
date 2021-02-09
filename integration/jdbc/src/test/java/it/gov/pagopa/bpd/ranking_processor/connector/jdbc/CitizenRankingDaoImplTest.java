@@ -6,13 +6,15 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.springframework.jdbc.core.BatchPreparedStatementSetter;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.core.*;
 
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -29,11 +31,53 @@ public class CitizenRankingDaoImplTest extends BaseTest {
 
 
     @Test
-    public void updateProcessedTransactionOK() {
+    public void updateCashbackOK() {
         Mockito.when(jdbcTemplateMock.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class)))
                 .thenReturn(new int[]{});
 
         int[] affectedRows = citizenRankingDao.updateCashback(Collections.emptyList());
+
+        Assert.assertNotNull(affectedRows);
+        Assert.assertEquals(0, affectedRows.length);
+    }
+
+
+    @Test
+    public void findAllOK_withPage() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        PageRequest pageRequest = PageRequest.of(0, 1, Sort.Direction.ASC, "pippo");
+        List<CitizenRanking> results = citizenRankingDao.findAll(1L, pageRequest);
+
+        Assert.assertNotNull(results);
+    }
+
+    @Test
+    public void findAllOK_withoutPage() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        List<CitizenRanking> results = citizenRankingDao.findAll(1L, null);
+
+        Assert.assertNotNull(results);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void findAllKO_invalidAwardPeriod() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        citizenRankingDao.findAll(null, null);
+    }
+
+
+    @Test
+    public void updateRankingOK() {
+        Mockito.when(jdbcTemplateMock.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class)))
+                .thenReturn(new int[]{});
+
+        int[] affectedRows = citizenRankingDao.updateRanking(Collections.emptyList());
 
         Assert.assertNotNull(affectedRows);
         Assert.assertEquals(0, affectedRows.length);

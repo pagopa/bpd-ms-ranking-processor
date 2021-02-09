@@ -3,9 +3,11 @@ package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 import it.gov.pagopa.bpd.common.BaseTest;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
+import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.*;
 
 import java.math.BigDecimal;
@@ -24,22 +26,44 @@ public class WinningWinningTransactionDaoImplTest extends BaseTest {
     private final WinningWinningTransactionDaoImpl winningWinningTransactionDao;
     private final JdbcTemplate jdbcTemplateMock;
 
+
     public WinningWinningTransactionDaoImplTest() {
         jdbcTemplateMock = Mockito.mock(JdbcTemplate.class);
         winningWinningTransactionDao = new WinningWinningTransactionDaoImpl(jdbcTemplateMock, true);
     }
 
+
     @Test
-    public void findTransactionToProcessOK_Payment() {
+    public void findTransactionToProcessOK_withPage() {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        List<WinningTransaction> transactionToProcess =
-                winningWinningTransactionDao.findTransactionToProcess(1L, WinningTransaction.TransactionType.PAYMENT);
+        for (TransactionType type : TransactionType.values()) {
+            List<WinningTransaction> transactions = winningWinningTransactionDao.findTransactionToProcess(1L,
+                    type,
+                    PageRequest.of(0, 1));
 
-        Assert.assertNotNull(transactionToProcess);
-        Assert.assertEquals(0, transactionToProcess.size());
+            Assert.assertNotNull(transactions);
+            Assert.assertEquals(0, transactions.size());
+        }
     }
+
+
+    @Test
+    public void findTransactionToProcessOK_withoutPage() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        for (TransactionType type : TransactionType.values()) {
+            List<WinningTransaction> transactions = winningWinningTransactionDao.findTransactionToProcess(1L,
+                    type,
+                    null);
+
+            Assert.assertNotNull(transactions);
+            Assert.assertEquals(0, transactions.size());
+        }
+    }
+
 
     @Test
     public void updateProcessedTransactionOK() {

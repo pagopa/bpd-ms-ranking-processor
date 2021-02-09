@@ -1,6 +1,5 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,35 +14,21 @@ import java.time.OffsetDateTime;
 @EqualsAndHashCode(of = {"idTrxAcquirer", "acquirerCode", "trxDate", "operationType", "acquirerId"}, callSuper = false)
 public class WinningTransaction implements Serializable {
 
-    String idTrxAcquirer;
-    String acquirerCode;
+    private String idTrxAcquirer;
+    private String acquirerCode;
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-    OffsetDateTime trxDate;
-    String operationType;
-    BigDecimal amount;
-    BigDecimal score;
-    String acquirerId;
-    String fiscalCode;
+    private OffsetDateTime trxDate;
+    private String operationType;
+    private BigDecimal amount;
+    private BigDecimal score;
+    private String acquirerId;
+    private String fiscalCode;
 
-    public WinningTransactionId getId() {
-        return new WinningTransactionId(idTrxAcquirer, acquirerCode, trxDate, operationType, acquirerId);
-    }
 
     public enum TransactionType {
         PAYMENT,
         TOTAL_TRANSFER,
         PARTIAL_TRANSFER
-    }
-
-    @Data
-    @AllArgsConstructor
-    @EqualsAndHashCode
-    public static class WinningTransactionId implements Serializable {
-        String idTrxAcquirer;
-        String acquirerCode;
-        OffsetDateTime trxDate;
-        String operationType;
-        String acquirerId;
     }
 
 }

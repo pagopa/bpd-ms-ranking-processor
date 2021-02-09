@@ -6,8 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.RowMapperResultSetExtractor;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
-import java.util.EnumMap;
+import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -93,49 +93,75 @@ class WinningWinningTransactionDaoImpl implements WinningTransactionDao {
     private final JdbcTemplate jdbcTemplate;
     private final RowMapperResultSetExtractor<WinningTransaction> findTrxToProcessResultSetExtractor;
 
-    private final EnumMap<TransactionType, PreparedStatementCreator> trxType2StatemantCreatorMap;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final boolean lockEnabled;
 
 
     @Autowired
     public WinningWinningTransactionDaoImpl(@Qualifier("transactionJdbcTemplate") JdbcTemplate jdbcTemplate,
                                             @Value("${winning-transaction.extraction-query.lock.enable}") boolean lockEnabled) {
+        if (log.isTraceEnabled()) {
+            log.trace("WinningWinningTransactionDaoImpl.WinningWinningTransactionDaoImpl");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("jdbcTemplate = {}, lockEnabled = {}", jdbcTemplate, lockEnabled);
+        }
         this.jdbcTemplate = jdbcTemplate;
+        this.lockEnabled = lockEnabled;
         namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
         findTrxToProcessResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionMapper());
-        trxType2StatemantCreatorMap = new EnumMap<>(TransactionType.class);
-        trxType2StatemantCreatorMap.put(TransactionType.PAYMENT,
-                connection -> connection.prepareStatement(lockEnabled
-                        ? FIND_PAYMENT_TRX_TO_PROCESS_QUERY + " FOR UPDATE SKIP LOCKED"
-                        : FIND_PAYMENT_TRX_TO_PROCESS_QUERY));
-        trxType2StatemantCreatorMap.put(TransactionType.TOTAL_TRANSFER,
-                connection -> connection.prepareStatement(lockEnabled
-                        ? FIND_TOTAL_TRANSFER_TRX_TO_PROCESS_QUERY + " FOR UPDATE SKIP LOCKED"
-                        : FIND_TOTAL_TRANSFER_TRX_TO_PROCESS_QUERY));
-        trxType2StatemantCreatorMap.put(TransactionType.PARTIAL_TRANSFER,
-                connection -> connection.prepareStatement(lockEnabled
-                        ? FIND_PARTIAL_TRANSFER_TRX_TO_PROCESS_QUERY + " FOR UPDATE SKIP LOCKED"
-                        : FIND_PARTIAL_TRANSFER_TRX_TO_PROCESS_QUERY));
     }
 
 
     @Override
-    public List<WinningTransaction> findTransactionToProcess(Long awardPeriodId, TransactionType transactionType) {
+    public List<WinningTransaction> findTransactionToProcess(Long awardPeriodId,
+                                                             TransactionType transactionType,
+                                                             Pageable pageable) {
         if (log.isTraceEnabled()) {
             log.trace("WinningWinningTransactionDaoImpl.findTransactionToProcess");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, transactionType = {}", awardPeriodId, transactionType);
+            log.debug("awardPeriodId = {}, transactionType = {}, pageable = {}", awardPeriodId, transactionType, pageable);
         }
 
-        return jdbcTemplate.query(trxType2StatemantCreatorMap.get(transactionType),
+        StringBuilder sql = new StringBuilder();
+        switch (transactionType) {
+            case PAYMENT:
+                sql.append(FIND_PAYMENT_TRX_TO_PROCESS_QUERY);
+                break;
+            case TOTAL_TRANSFER:
+                sql.append(FIND_TOTAL_TRANSFER_TRX_TO_PROCESS_QUERY);
+                break;
+            case PARTIAL_TRANSFER:
+                sql.append(FIND_PARTIAL_TRANSFER_TRX_TO_PROCESS_QUERY);
+                break;
+            default:
+                throw new IllegalArgumentException(String.format("Transaction Type \"%s\" not allowed", transactionType));
+        }
+
+        if (pageable != null) {
+            sql.append(" LIMIT ").append(pageable.getPageSize())
+                    .append(" OFFSET ").append(pageable.getOffset());
+        }
+
+        if (lockEnabled) {
+            sql.append(" FOR UPDATE SKIP LOCKED");
+        }
+
+        return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
                 preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
                 findTrxToProcessResultSetExtractor);
     }
 
 
     @Override
-    public int[] updateProcessedTransaction(final List<WinningTransaction.WinningTransactionId> winningTransactionIds) {
+    public int[] updateProcessedTransaction(final Collection<WinningTransaction> winningTransactionIds) {
+        if (log.isTraceEnabled()) {
+            log.trace("WinningWinningTransactionDaoImpl.updateProcessedTransaction");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("winningTransactionIds = {}", winningTransactionIds);
+        }
         SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(winningTransactionIds.toArray());
         return namedParameterJdbcTemplate.batchUpdate(UPDATE_PROCESSED_TRX_SQL, batchValues);
     }

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -39,9 +40,18 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
             " where" +
             " award_period_id_n = ?";
 
+    private static final String UPDATE_RANKING_SQL = "update" +
+            " bpd_citizen.bpd_citizen_ranking" +
+            " set" +
+            " ranking_n = :ranking" +
+            " where" +
+            " fiscal_code_c = :fiscalCode" +
+            " and award_period_id_n = :awardPeriodId";
+
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final RowMapperResultSetExtractor<CitizenRanking> findallResultSetExtractor;
+
 
     @Autowired
     public CitizenRankingDaoImpl(@Qualifier("citizenJdbcTemplate") JdbcTemplate jdbcTemplate) {
@@ -49,24 +59,26 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
             log.trace("CitizenRankingDaoImpl.CitizenRankingDaoImpl");
         }
         if (log.isDebugEnabled()) {
-            log.debug("jdbcTemplate = " + jdbcTemplate);
+            log.debug("jdbcTemplate = {}", jdbcTemplate);
         }
         this.jdbcTemplate = jdbcTemplate;
         namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
         findallResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
     }
 
+
     @Override
-    public int[] updateCashback(final List<CitizenRanking> citizenRankings) {
+    public int[] updateCashback(final Collection<CitizenRanking> citizenRankings) {
         if (log.isTraceEnabled()) {
             log.trace("CitizenRankingDaoImpl.updateCashback");
         }
         if (log.isDebugEnabled()) {
-            log.debug("citizenRankings = " + citizenRankings);
+            log.debug("citizenRankings = {}", citizenRankings);
         }
         SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings.toArray());
         return namedParameterJdbcTemplate.batchUpdate(UPDATE_CASHBACK_SQL, batchValues);
     }
+
 
     @Override
     public List<CitizenRanking> findAll(Long awardPeriodId, Pageable pageable) {
@@ -74,7 +86,10 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
             log.trace("CitizenRankingDaoImpl.findAll");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = " + awardPeriodId + ", pageable = " + pageable);
+            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
+        }
+        if (awardPeriodId == null) {
+            throw new IllegalArgumentException("awardPeriodId can not be null");
         }
         StringBuilder sql = new StringBuilder(FIND_ALL_ORDERED_BY_TRX_NUM_SQL);
         if (pageable != null) {
@@ -88,6 +103,19 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
                 preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
                 findallResultSetExtractor);
+    }
+
+
+    @Override
+    public int[] updateRanking(Collection<CitizenRanking> citizenRankings) {
+        if (log.isTraceEnabled()) {
+            log.trace("CitizenRankingDaoImpl.updateRanking");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("citizenRankings = {}", citizenRankings);
+        }
+        SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings.toArray());
+        return namedParameterJdbcTemplate.batchUpdate(UPDATE_RANKING_SQL, batchValues);
     }
 
 
