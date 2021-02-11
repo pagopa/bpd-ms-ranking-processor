@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.RowMapperResultSetExtractor;
@@ -91,18 +92,40 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         if (awardPeriodId == null) {
             throw new IllegalArgumentException("awardPeriodId can not be null");
         }
-        StringBuilder sql = new StringBuilder(FIND_ALL_ORDERED_BY_TRX_NUM_SQL);
+        StringBuilder clauses = new StringBuilder();
         if (pageable != null) {
             if (!pageable.getSort().isEmpty()) {
-                sql.append(" ").append(pageable.getSort().toString().replace(":", ""));
+                clauses.append(" ").append(pageable.getSort().toString().replace(":", ""));
             }
-            sql.append(" LIMIT ").append(pageable.getPageSize())
-                    .append(" OFFSET ").append(pageable.getOffset());
+            if (pageable.isPaged()) {
+                clauses.append(" LIMIT ").append(pageable.getPageSize())
+                        .append(" OFFSET ").append(pageable.getOffset());
+            }
         }
 
-        return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
+        return findAll(awardPeriodId, clauses.toString());
+    }
+
+    private List<CitizenRanking> findAll(Long awardPeriodId, String clauses) {
+        return jdbcTemplate.query(connection -> connection.prepareStatement(FIND_ALL_ORDERED_BY_TRX_NUM_SQL + clauses),
                 preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
                 findallResultSetExtractor);
+    }
+
+    @Override
+    public List<CitizenRanking> findAll(Long awardPeriodId, Sort sort) {
+        if (log.isTraceEnabled()) {
+            log.trace("CitizenRankingDaoImpl.findAll");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("awardPeriodId = {}, sort = {}", awardPeriodId, sort);
+        }
+        StringBuilder clauses = new StringBuilder();
+        if (sort != null && !sort.isEmpty()) {
+            clauses.append(" ").append(sort.toString().replace(":", ""));
+        }
+
+        return findAll(awardPeriodId, clauses.toString());
     }
 
 

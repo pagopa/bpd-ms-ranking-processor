@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/bpd/award-periods/actives"
+  },
+  "response": {
+    "status": "200",
+    "jsonBody": [
+      {
+        "awardPeriodId": "1",
+        "startDate": "2020-04-01T14:59:59.245Z",
+        "endDate": "2020-04-30T14:59:59.245Z"
+      }
+    ],
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}

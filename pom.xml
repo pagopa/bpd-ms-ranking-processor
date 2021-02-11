@@ -25,6 +25,11 @@
                 <version>1.0.0-SNAPSHOT</version>
             </dependency>
             <dependency>
+                <groupId>it.gov.pagopa.bpd.ms.ranking_processor.integration</groupId>
+                <artifactId>bpd-ms-ranking-processor-integration-rest</artifactId>
+                <version>1.0.0-SNAPSHOT</version>
+            </dependency>
+            <dependency>
                 <groupId>it.gov.pagopa.bpd.ms.ranking_processor</groupId>
                 <artifactId>bpd-ms-ranking-processor-core</artifactId>
                 <version>1.0.0-SNAPSHOT</version>
@@ -42,6 +47,17 @@
             <dependency>
                 <groupId>it.gov.pagopa.bpd.commons</groupId>
                 <artifactId>bpd-commons-base</artifactId>
+                <version>${bpd-commons.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>it.gov.pagopa.bpd.commons.integration</groupId>
+                <artifactId>bpd-commons-integration-rest</artifactId>
+                <version>${bpd-commons.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>it.gov.pagopa.bpd.commons.integration</groupId>
+                <artifactId>bpd-commons-integration-rest</artifactId>
                 <version>${bpd-commons.version}</version>
                 <type>test-jar</type>
             </dependency>

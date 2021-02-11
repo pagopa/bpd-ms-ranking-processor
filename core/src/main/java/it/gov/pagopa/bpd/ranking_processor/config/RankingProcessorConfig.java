@@ -6,5 +6,4 @@ import org.springframework.context.annotation.PropertySource;
 @Configuration
 @PropertySource("classpath:config/cashbackProcessingConfig.properties")
 class RankingProcessorConfig {
-
 }

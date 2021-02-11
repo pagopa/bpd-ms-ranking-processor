@@ -17,6 +17,10 @@
             <groupId>it.gov.pagopa.bpd.ms.ranking_processor.integration</groupId>
             <artifactId>bpd-ms-ranking-processor-integration-jdbc</artifactId>
         </dependency>
+        <dependency>
+            <groupId>it.gov.pagopa.bpd.ms.ranking_processor.integration</groupId>
+            <artifactId>bpd-ms-ranking-processor-integration-rest</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

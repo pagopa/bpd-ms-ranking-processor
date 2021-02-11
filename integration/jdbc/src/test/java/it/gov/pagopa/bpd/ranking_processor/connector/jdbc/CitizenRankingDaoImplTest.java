@@ -7,6 +7,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.*;
 
@@ -58,7 +59,7 @@ public class CitizenRankingDaoImplTest extends BaseTest {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        List<CitizenRanking> results = citizenRankingDao.findAll(1L, null);
+        List<CitizenRanking> results = citizenRankingDao.findAll(1L, (Pageable) null);
 
         Assert.assertNotNull(results);
     }
@@ -68,7 +69,7 @@ public class CitizenRankingDaoImplTest extends BaseTest {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        citizenRankingDao.findAll(null, null);
+        citizenRankingDao.findAll(null, (Pageable) null);
     }
 
 

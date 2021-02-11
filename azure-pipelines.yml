@@ -23,6 +23,11 @@ resources:
 
 variables:
 
+  TZ: 'Europe/Rome'
+
+  # Wiremock Port
+  WiremockPort: '8080'
+
   dockerfileRelativePath: 'Dockerfile'
 
   # Agent VM image name for Build
