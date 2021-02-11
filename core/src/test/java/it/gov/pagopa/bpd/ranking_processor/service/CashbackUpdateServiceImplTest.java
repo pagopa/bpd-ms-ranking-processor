@@ -10,8 +10,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
@@ -26,18 +26,21 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 @RunWith(SpringRunner.class)
-@ContextConfiguration(classes = CashbackProcessingServiceImpl.class)
+@ContextConfiguration(classes = CashbackUpdateServiceImpl.class)
 @TestPropertySource(properties = {
-        "ranking-processor-cashback-processing.data-extraction.limit=10"
+        "cashback-update.data-extraction.limit=10"
 })
-public class CashbackProcessingServiceImplTest {
+public class CashbackUpdateServiceImplTest {
+
+    @Value("${cashback-update.data-extraction.limit}")
+    private int limit;
 
     @MockBean
     private WinningTransactionDao winningTransactionDao;
     @MockBean
     private CitizenRankingDao citizenRankingDao;
     @Autowired
-    private CashbackProcessingServiceImpl cashbackProcessingService;
+    private CashbackUpdateServiceImpl cashbackProcessingService;
 
     @PostConstruct
     public void initMocks() {
@@ -62,12 +65,9 @@ public class CashbackProcessingServiceImplTest {
         when(winningTransactionDao.updateProcessedTransaction(anyCollection()))
                 .thenAnswer(invocationOnMock -> new int[invocationOnMock.getArgument(0, Collection.class).size()]);
 
-        int pageSize = 10;
-        int processedTrxCount = cashbackProcessingService.processCashback(1L,
-                TransactionType.PAYMENT,
-                PageRequest.of(0, pageSize));
+        int processedTrxCount = cashbackProcessingService.processCashback(1L, TransactionType.PAYMENT, 0);
 
-        Assert.assertSame(pageSize, processedTrxCount);
+        Assert.assertSame(limit, processedTrxCount);
     }
 
     @Test
@@ -77,12 +77,9 @@ public class CashbackProcessingServiceImplTest {
         when(winningTransactionDao.updateProcessedTransaction(anyCollection()))
                 .thenAnswer(invocationOnMock -> new int[invocationOnMock.getArgument(0, Collection.class).size() - 1]);
 
-        int pageSize = 10;
-        int processedTrxCount = cashbackProcessingService.processCashback(1L,
-                TransactionType.PAYMENT,
-                PageRequest.of(0, pageSize));
+        int processedTrxCount = cashbackProcessingService.processCashback(1L, TransactionType.PAYMENT, 0);
 
-        Assert.assertSame(pageSize, processedTrxCount);
+        Assert.assertSame(limit, processedTrxCount);
     }
 
 }

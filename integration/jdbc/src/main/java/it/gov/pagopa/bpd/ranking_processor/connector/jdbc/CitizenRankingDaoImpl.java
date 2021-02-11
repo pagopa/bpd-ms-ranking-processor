@@ -121,7 +121,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
             log.debug("awardPeriodId = {}, sort = {}", awardPeriodId, sort);
         }
         StringBuilder clauses = new StringBuilder();
-        if (sort != null && !sort.isEmpty()) {
+        if (sort != null && sort.isSorted()) {
             clauses.append(" ").append(sort.toString().replace(":", ""));
         }
 
