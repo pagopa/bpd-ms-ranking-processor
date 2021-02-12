@@ -3,13 +3,15 @@ package it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 
 @Data
 @Builder
 @EqualsAndHashCode(of = {"fiscalCode", "awardPeriodId"}, callSuper = false)
-public class CitizenRanking implements Comparable<CitizenRanking> {
+@ToString(of = {"fiscalCode", "ranking"})
+public class CitizenRanking {
 
     private String fiscalCode;
     private Long awardPeriodId;
@@ -18,10 +20,5 @@ public class CitizenRanking implements Comparable<CitizenRanking> {
     private Long ranking;
     private Long rankingMinRequired;
     private BigDecimal maxTotalCashback;
-
-    @Override
-    public int compareTo(CitizenRanking cr) {
-        return ranking.compareTo(cr.getRanking());
-    }
 
 }

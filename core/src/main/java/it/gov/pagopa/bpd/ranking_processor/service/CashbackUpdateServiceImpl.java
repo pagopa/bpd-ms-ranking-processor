@@ -5,6 +5,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
+import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,71 +21,50 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * See {@link CashbackUpdateService}
+ */
 @Slf4j
 @Service
 class CashbackUpdateServiceImpl implements CashbackUpdateService {
 
     private final WinningTransactionDao winningTransactionDao;
     private final CitizenRankingDao citizenRankingDao;
-    private final Integer limit;
-    private final BinaryOperator<CitizenRanking> cashbackMapper;
     private final boolean parallelEnabled;
+    private final BinaryOperator<CitizenRanking> cashbackMapper = (cr1, cr2) -> {
+        cr1.setTotalCashback(cr1.getTotalCashback().add(cr2.getTotalCashback()));
+        cr1.setTransactionNumber(cr1.getTransactionNumber() + cr2.getTransactionNumber());
+        return cr1;
+    };
 
 
     @Autowired
     public CashbackUpdateServiceImpl(WinningTransactionDao winningTransactionDao,
                                      CitizenRankingDao citizenRankingDao,
-                                     @Value("${cashback-update.data-extraction.limit}") Integer limit,
                                      @Value("${cashback-update.parallel.enable}") boolean parallelEnabled) {
         if (log.isTraceEnabled()) {
             log.trace("CashbackUpdateServiceImpl.CashbackUpdateServiceImpl");
         }
         if (log.isDebugEnabled()) {
-            log.debug("winningTransactionDao = {}, citizenRankingDao = {}, limit = {}", winningTransactionDao, citizenRankingDao, limit);
+            log.debug("winningTransactionDao = {}, citizenRankingDao = {}, parallelEnabled = {}", winningTransactionDao, citizenRankingDao, parallelEnabled);
         }
 
         this.winningTransactionDao = winningTransactionDao;
         this.citizenRankingDao = citizenRankingDao;
-        this.limit = limit;
         this.parallelEnabled = parallelEnabled;
-        cashbackMapper = (cr1, cr2) -> {
-            cr1.setTotalCashback(cr1.getTotalCashback().add(cr2.getTotalCashback()));
-            cr1.setTransactionNumber(cr1.getTransactionNumber() + cr2.getTransactionNumber());
-            return cr1;
-        };
     }
 
-    public void processCashback(final Long awardPeriodId) {
-        if (log.isTraceEnabled()) {
-            log.trace("CashbackUpdateServiceImpl.processCashback");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}", awardPeriodId);
-        }
-
-        for (TransactionType trxType : TransactionType.values()) {
-            int pageNumber = 0;
-            int trxCount;
-            do {
-                trxCount = processCashback(awardPeriodId, trxType, pageNumber++);
-            } while (limit == trxCount);
-        }
-    }
 
     @Override
     @Transactional
-    public int processCashback(final Long awardPeriodId, final TransactionType transactionType, int pageNumber) {
+    public int process(long awardPeriodId, TransactionType transactionType, SimplePageRequest simplePageRequest) {
         if (log.isTraceEnabled()) {
             log.trace("CashbackUpdateServiceImpl.processCashback");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, transactionType = {}, pageNumber = {}", awardPeriodId, transactionType, pageNumber);
+            log.debug("awardPeriodId = {}, transactionType = {}, simplePageRequest = {}", awardPeriodId, transactionType, simplePageRequest);
         }
-        if (awardPeriodId == null) {
-            throw new IllegalArgumentException("awardPeriodId can not be null");
-        }
-
-        Pageable pageRequest = PageRequest.of(limit, pageNumber);
+        Pageable pageRequest = PageRequest.of(simplePageRequest.getPage(), simplePageRequest.getSize());
 
         List<WinningTransaction> transactions = winningTransactionDao.findTransactionToProcess(awardPeriodId,
                 transactionType,
@@ -105,7 +85,6 @@ class CashbackUpdateServiceImpl implements CashbackUpdateService {
         return transactions.size();
     }
 
-
     private Map<String, CitizenRanking> aggregateData(final Long awardPeriodId, final List<WinningTransaction> transactions) {
         if (log.isTraceEnabled()) {
             log.trace("CashbackUpdateServiceImpl.aggregateData");
@@ -125,6 +104,5 @@ class CashbackUpdateServiceImpl implements CashbackUpdateService {
                 ? stream.parallel().collect(Collectors.toConcurrentMap(CitizenRanking::getFiscalCode, Function.identity(), cashbackMapper))
                 : stream.collect(Collectors.toMap(CitizenRanking::getFiscalCode, Function.identity(), cashbackMapper));
     }
-
 
 }

@@ -6,6 +6,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
+import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -28,7 +29,8 @@ import static org.mockito.Mockito.when;
 @RunWith(SpringRunner.class)
 @ContextConfiguration(classes = CashbackUpdateServiceImpl.class)
 @TestPropertySource(properties = {
-        "cashback-update.data-extraction.limit=10"
+        "cashback-update.data-extraction.limit=10",
+        "cashback-update.parallel.enable=false"
 })
 public class CashbackUpdateServiceImplTest {
 
@@ -65,7 +67,8 @@ public class CashbackUpdateServiceImplTest {
         when(winningTransactionDao.updateProcessedTransaction(anyCollection()))
                 .thenAnswer(invocationOnMock -> new int[invocationOnMock.getArgument(0, Collection.class).size()]);
 
-        int processedTrxCount = cashbackProcessingService.processCashback(1L, TransactionType.PAYMENT, 0);
+        SimplePageRequest pageRequest = SimplePageRequest.of(0, limit);
+        int processedTrxCount = cashbackProcessingService.process(1L, TransactionType.PAYMENT, pageRequest);
 
         Assert.assertSame(limit, processedTrxCount);
     }
@@ -77,7 +80,8 @@ public class CashbackUpdateServiceImplTest {
         when(winningTransactionDao.updateProcessedTransaction(anyCollection()))
                 .thenAnswer(invocationOnMock -> new int[invocationOnMock.getArgument(0, Collection.class).size() - 1]);
 
-        int processedTrxCount = cashbackProcessingService.processCashback(1L, TransactionType.PAYMENT, 0);
+        SimplePageRequest pageRequest = SimplePageRequest.of(0, limit);
+        int processedTrxCount = cashbackProcessingService.process(1L, TransactionType.PAYMENT, pageRequest);
 
         Assert.assertSame(limit, processedTrxCount);
     }

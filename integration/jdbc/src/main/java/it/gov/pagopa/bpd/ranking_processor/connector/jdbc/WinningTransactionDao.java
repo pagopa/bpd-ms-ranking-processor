@@ -6,6 +6,9 @@ import org.springframework.data.domain.Pageable;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Data Access Object to manage the operations to the database related to {@link WinningTransaction} model
+ */
 public interface WinningTransactionDao {
 
     List<WinningTransaction> findTransactionToProcess(Long awardPeriodId,

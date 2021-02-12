@@ -1,12 +1,13 @@
 package it.gov.pagopa.bpd.ranking_processor.service;
 
-import javax.validation.constraints.NotNull;
+import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
+import org.apache.commons.lang3.mutable.MutableInt;
 
 /**
- * Service to orchestrate others services in order to execute the Ranking Update process
+ * A service to manage the Business Logic related to ranking update process
  */
 public interface RankingUpdateService {
 
-    int process(@NotNull Long awardPeriodId, int pageNumber);
+    int process(long awardPeriodId, MutableInt lastAssignedRanking, SimplePageRequest simplePageRequest);
 
 }
