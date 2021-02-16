@@ -12,4 +12,12 @@
     <artifactId>bpd-ms-ranking-processor-api-rest</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 
+    <dependencies>
+        <dependency>
+            <groupId>it.gov.pagopa.bpd.commons.api</groupId>
+            <artifactId>bpd-commons-api-rest</artifactId>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
+
 </project>

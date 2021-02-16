@@ -18,12 +18,6 @@
             <artifactId>bpd-ms-ranking-processor-api-rest</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!--        <dependency>-->
-        <!--            <groupId>it.gov.pagopa.bpd.ms.ranking_processor.api</groupId>-->
-        <!--            <artifactId>bpd-ms-ranking-processor-app-api-listener</artifactId>-->
-        <!--            <version>${bpd.ranking-processor.version}</version>-->
-        <!--            <scope>runtime</scope>-->
-        <!--        </dependency>-->
     </dependencies>
 
     <build>

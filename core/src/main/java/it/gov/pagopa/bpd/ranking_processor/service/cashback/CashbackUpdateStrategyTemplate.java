@@ -1,4 +1,4 @@
-package it.gov.pagopa.bpd.ranking_processor.service;
+package it.gov.pagopa.bpd.ranking_processor.service.cashback;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao;
@@ -7,30 +7,24 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransacti
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * See {@link CashbackUpdateService}
+ * Template Method pattern of {@link CashbackUpdateStrategy}
  */
 @Slf4j
-@Service
-class CashbackUpdateServiceImpl implements CashbackUpdateService {
+abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy {
 
     private final WinningTransactionDao winningTransactionDao;
     private final CitizenRankingDao citizenRankingDao;
-    private final boolean parallelEnabled;
     private final BinaryOperator<CitizenRanking> cashbackMapper = (cr1, cr2) -> {
         cr1.setTotalCashback(cr1.getTotalCashback().add(cr2.getTotalCashback()));
         cr1.setTransactionNumber(cr1.getTransactionNumber() + cr2.getTransactionNumber());
@@ -38,20 +32,17 @@ class CashbackUpdateServiceImpl implements CashbackUpdateService {
     };
 
 
-    @Autowired
-    public CashbackUpdateServiceImpl(WinningTransactionDao winningTransactionDao,
-                                     CitizenRankingDao citizenRankingDao,
-                                     @Value("${cashback-update.parallel.enable}") boolean parallelEnabled) {
+    public CashbackUpdateStrategyTemplate(WinningTransactionDao winningTransactionDao,
+                                          CitizenRankingDao citizenRankingDao) {
         if (log.isTraceEnabled()) {
-            log.trace("CashbackUpdateServiceImpl.CashbackUpdateServiceImpl");
+            log.trace("CashbackUpdateStrategyTemplate.CashbackUpdateStrategyTemplate");
         }
         if (log.isDebugEnabled()) {
-            log.debug("winningTransactionDao = {}, citizenRankingDao = {}, parallelEnabled = {}", winningTransactionDao, citizenRankingDao, parallelEnabled);
+            log.debug("winningTransactionDao = {}, citizenRankingDao = {}", winningTransactionDao, citizenRankingDao);
         }
 
         this.winningTransactionDao = winningTransactionDao;
         this.citizenRankingDao = citizenRankingDao;
-        this.parallelEnabled = parallelEnabled;
     }
 
 
@@ -59,7 +50,7 @@ class CashbackUpdateServiceImpl implements CashbackUpdateService {
     @Transactional
     public int process(long awardPeriodId, TransactionType transactionType, SimplePageRequest simplePageRequest) {
         if (log.isTraceEnabled()) {
-            log.trace("CashbackUpdateServiceImpl.processCashback");
+            log.trace("CashbackUpdateStrategyTemplate.process");
         }
         if (log.isDebugEnabled()) {
             log.debug("awardPeriodId = {}, transactionType = {}, simplePageRequest = {}", awardPeriodId, transactionType, simplePageRequest);
@@ -87,7 +78,7 @@ class CashbackUpdateServiceImpl implements CashbackUpdateService {
 
     private Map<String, CitizenRanking> aggregateData(final Long awardPeriodId, final List<WinningTransaction> transactions) {
         if (log.isTraceEnabled()) {
-            log.trace("CashbackUpdateServiceImpl.aggregateData");
+            log.trace("CashbackUpdateStrategyTemplate.aggregateData");
         }
         if (log.isDebugEnabled()) {
             log.debug("awardPeriodId = {}, transactions = {}", awardPeriodId, transactions);
@@ -100,9 +91,14 @@ class CashbackUpdateServiceImpl implements CashbackUpdateService {
                         .totalCashback(trx.getScore())
                         .transactionNumber("01".equals(trx.getOperationType()) ? -1L : 1L)
                         .build());
-        return parallelEnabled
-                ? stream.parallel().collect(Collectors.toConcurrentMap(CitizenRanking::getFiscalCode, Function.identity(), cashbackMapper))
-                : stream.collect(Collectors.toMap(CitizenRanking::getFiscalCode, Function.identity(), cashbackMapper));
+
+        return aggregateData(stream, CitizenRanking::getFiscalCode, Function.identity(), cashbackMapper);
     }
+
+
+    protected abstract Map<String, CitizenRanking> aggregateData(Stream<CitizenRanking> stream,
+                                                                 Function<CitizenRanking, String> keyMapper,
+                                                                 Function<CitizenRanking, CitizenRanking> valueMapper,
+                                                                 BinaryOperator<CitizenRanking> mergeFunction);
 
 }
