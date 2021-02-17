@@ -17,7 +17,9 @@ public interface CitizenRankingDao {
      */
     Sort SORT_BY_TRX_NUM_DESC = Sort.by(Sort.Direction.DESC, "transaction_n");
 
-    int[] updateCashback(Collection<CitizenRanking> citizenRankings);
+    int[] updateCashback(List<CitizenRanking> citizenRankings);
+
+    int[] insertCashback(List<CitizenRanking> citizenRankings);
 
     List<CitizenRanking> findAll(Long awardPeriodId, Pageable pageable);
 

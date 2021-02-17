@@ -10,9 +10,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.RowMapperResultSetExtractor;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
+import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
+import org.springframework.jdbc.core.simple.SimpleJdbcInsertOperations;
 import org.springframework.stereotype.Service;
 
 import java.sql.ResultSet;
@@ -24,12 +27,15 @@ import java.util.List;
 @Slf4j
 class CitizenRankingDaoImpl implements CitizenRankingDao {
 
+    private static final String USER_VALUE = "RANKING-PROCESSOR";
+
     public final String findAllOrderedByTrxNumSql;
     private final String updateCashbackSql;
     private final String updateRankingSql;
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final RowMapperResultSetExtractor<CitizenRanking> findallResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
+    private final SimpleJdbcInsertOperations simpleJdbcInsertOps;
 
 
     @Autowired
@@ -41,25 +47,49 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         if (log.isDebugEnabled()) {
             log.debug("jdbcTemplate = {}", jdbcTemplate);
         }
+
         this.jdbcTemplate = jdbcTemplate;
         namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
-
-        updateCashbackSql = String.format("update %s set cashback_n = :cashback, transaction_n = :transactionCount, update_date_t = CURRENT_TIMESTAMP, update_user_s = 'RANKING-PROCESSOR' where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", tableName);
+        simpleJdbcInsertOps = new SimpleJdbcInsert(jdbcTemplate);
+        updateCashbackSql = String.format("update %s set cashback_n = :cashback, transaction_n = :transactionCount, update_date_t = CURRENT_TIMESTAMP, update_user_s = '%s' where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", tableName, USER_VALUE);
         findAllOrderedByTrxNumSql = String.format("select * from %s where award_period_id_n = ?", tableName);
         updateRankingSql = String.format("update %s set ranking_n = :ranking where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", tableName);
     }
 
 
     @Override
-    public int[] updateCashback(final Collection<CitizenRanking> citizenRankings) {
+    public int[] updateCashback(final List<CitizenRanking> citizenRankings) {
         if (log.isTraceEnabled()) {
             log.trace("CitizenRankingDaoImpl.updateCashback");
         }
         if (log.isDebugEnabled()) {
             log.debug("citizenRankings = {}", citizenRankings);
         }
-        SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings.toArray());
+        SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings);
         return namedParameterJdbcTemplate.batchUpdate(updateCashbackSql, batchValues);
+    }
+
+    public int[] insertCashback(final List<CitizenRanking> citizenRankings) {
+        if (log.isTraceEnabled()) {
+            log.trace("CitizenRankingDaoImpl.updateCashback");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("citizenRankings = {}", citizenRankings);
+        }
+
+        SqlParameterSource[] batchValues = new SqlParameterSource[citizenRankings.size()];
+        for (int i = 0; i < citizenRankings.size(); i++) {
+            SqlParameterSource parameters = new MapSqlParameterSource()
+                    .addValue("fiscal_code_c", citizenRankings.get(i).getFiscalCode())
+                    .addValue("award_period_id_n", citizenRankings.get(i).getAwardPeriodId())
+                    .addValue("transaction_n", citizenRankings.get(i).getTransactionNumber())
+                    .addValue("cashback_n", citizenRankings.get(i).getRanking())
+                    .addValue("insert_date_t", "CURRENT_TIMESTAMP")
+                    .addValue("insert_user_s", USER_VALUE);
+            batchValues[i] = parameters;
+        }
+
+        return simpleJdbcInsertOps.executeBatch(batchValues);
     }
 
 

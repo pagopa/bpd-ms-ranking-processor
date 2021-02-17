@@ -11,8 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -22,6 +21,8 @@ import java.util.stream.Stream;
  */
 @Slf4j
 abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy {
+
+    static final String ERROR_MESSAGE_TEMPLATE = "%s: affected %d rows of %d";
 
     private final WinningTransactionDao winningTransactionDao;
     private final CitizenRankingDao citizenRankingDao;
@@ -55,28 +56,61 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
         if (log.isDebugEnabled()) {
             log.debug("awardPeriodId = {}, transactionType = {}, simplePageRequest = {}", awardPeriodId, transactionType, simplePageRequest);
         }
-        Pageable pageRequest = PageRequest.of(simplePageRequest.getPage(), simplePageRequest.getSize());
 
+        Pageable pageRequest = PageRequest.of(simplePageRequest.getPage(), simplePageRequest.getSize());
         List<WinningTransaction> transactions = winningTransactionDao.findTransactionToProcess(awardPeriodId,
                 transactionType,
                 pageRequest);
 
-        Map<String, CitizenRanking> cashbackMap = aggregateData(awardPeriodId, transactions);
+        List<CitizenRanking> rankings = new ArrayList<>(aggregateData(awardPeriodId, transactions));
+        int[] affectedRows = citizenRankingDao.updateCashback(rankings);
 
-        int[] affectedRows = citizenRankingDao.updateCashback(cashbackMap.values());
-        if (affectedRows.length != cashbackMap.values().size()) {
-            log.warn("updateCashback: affected {} rows of {}", affectedRows.length, cashbackMap.values().size());
+        if (affectedRows.length != rankings.size()) {
+            String message = String.format(ERROR_MESSAGE_TEMPLATE, "updateCashback", affectedRows.length, rankings.size());
+            log.error(message);
+            throw new CashbackUpdateException(message);
+
+        } else {
+            ArrayList<CitizenRanking> failedUpdateRankings = new ArrayList<>();
+
+            for (int i = 0; i < affectedRows.length; i++) {
+
+                if (affectedRows[i] < 1) {
+                    failedUpdateRankings.add(rankings.get(i));
+                }
+            }
+            affectedRows = citizenRankingDao.insertCashback(failedUpdateRankings);
+            checkErrors(failedUpdateRankings.size(), affectedRows, "insertCashback");
         }
 
         affectedRows = winningTransactionDao.updateProcessedTransaction(transactions);
-        if (affectedRows.length != cashbackMap.values().size()) {
-            log.warn("updateProcessedTransaction: affected {} rows of {}", affectedRows.length, cashbackMap.values().size());
-        }
+        checkErrors(transactions.size(), affectedRows, "updateProcessedTransaction");
 
         return transactions.size();
     }
 
-    private Map<String, CitizenRanking> aggregateData(final Long awardPeriodId, final List<WinningTransaction> transactions) {
+
+    private void checkErrors(int statementsCount, int[] affectedRows, String operationName) {
+        if (affectedRows.length != statementsCount) {
+            String message = String.format(ERROR_MESSAGE_TEMPLATE, operationName, affectedRows.length, statementsCount);
+            log.error(message);
+            throw new CashbackUpdateException(message);
+
+        } else {
+            long failedUpdateCount = Arrays.stream(affectedRows)
+                    .filter(value -> value < 1)
+                    .count();
+
+            if (failedUpdateCount > 0) {
+                String message = String.format(ERROR_MESSAGE_TEMPLATE, operationName, statementsCount - failedUpdateCount, statementsCount);
+                log.error(message);
+                throw new CashbackUpdateException(message);
+            }
+        }
+    }
+
+
+    private Collection<CitizenRanking> aggregateData(final Long awardPeriodId, final List<WinningTransaction> transactions) {
         if (log.isTraceEnabled()) {
             log.trace("CashbackUpdateStrategyTemplate.aggregateData");
         }
@@ -92,7 +126,10 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
                         .transactionNumber("01".equals(trx.getOperationType()) ? -1L : 1L)
                         .build());
 
-        return aggregateData(stream, CitizenRanking::getFiscalCode, Function.identity(), cashbackMapper);
+        Map<String, CitizenRanking> cashbackMap =
+                aggregateData(stream, CitizenRanking::getFiscalCode, Function.identity(), cashbackMapper);
+
+        return cashbackMap.values();
     }
 
 

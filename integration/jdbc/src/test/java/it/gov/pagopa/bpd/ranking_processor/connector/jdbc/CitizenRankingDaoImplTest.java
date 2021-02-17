@@ -27,7 +27,7 @@ public class CitizenRankingDaoImplTest extends BaseTest {
 
     public CitizenRankingDaoImplTest() {
         jdbcTemplateMock = Mockito.mock(JdbcTemplate.class);
-        citizenRankingDao = new CitizenRankingDaoImpl(jdbcTemplateMock);
+        citizenRankingDao = new CitizenRankingDaoImpl(jdbcTemplateMock, "bpd_citizen_ranking");
     }
 
 
