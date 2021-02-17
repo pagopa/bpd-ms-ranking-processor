@@ -21,15 +21,15 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 
-public class WinningWinningTransactionDaoImplTest extends BaseTest {
+public class WinningTransactionDaoImplTest extends BaseTest {
 
-    private final WinningWinningTransactionDaoImpl winningWinningTransactionDao;
+    private final WinningTransactionDaoImpl winningWinningTransactionDao;
     private final JdbcTemplate jdbcTemplateMock;
 
 
-    public WinningWinningTransactionDaoImplTest() {
+    public WinningTransactionDaoImplTest() {
         jdbcTemplateMock = Mockito.mock(JdbcTemplate.class);
-        winningWinningTransactionDao = new WinningWinningTransactionDaoImpl(jdbcTemplateMock, true);
+        winningWinningTransactionDao = new WinningTransactionDaoImpl(jdbcTemplateMock, true);
     }
 
 
@@ -79,10 +79,10 @@ public class WinningWinningTransactionDaoImplTest extends BaseTest {
 
     public static class WinningTransactionMapperTest {
 
-        private final WinningWinningTransactionDaoImpl.WinningTransactionMapper winningTransactionMapper;
+        private final WinningTransactionDaoImpl.WinningTransactionMapper winningTransactionMapper;
 
         public WinningTransactionMapperTest() {
-            winningTransactionMapper = new WinningWinningTransactionDaoImpl.WinningTransactionMapper();
+            winningTransactionMapper = new WinningTransactionDaoImpl.WinningTransactionMapper();
         }
 
         @Test

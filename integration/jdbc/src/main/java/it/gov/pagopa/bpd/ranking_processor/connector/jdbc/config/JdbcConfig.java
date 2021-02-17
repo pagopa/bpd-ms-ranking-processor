@@ -20,14 +20,14 @@ class JdbcConfig {
         return new JdbcTemplate(rtdDataSource());
     }
 
-    @Bean(name = "citizenDataSource")
+    @Bean("citizenDataSource")
     @Primary
     @ConfigurationProperties(prefix = "citizen.spring.datasource.hikari")
     public DataSource rtdDataSource() {
         return citizenDataSourceProperties().initializeDataSourceBuilder().build();
     }
 
-    @Bean(name = "citizenDataSourceProperties")
+    @Bean("citizenDataSourceProperties")
     @Primary
     @ConfigurationProperties("citizen.spring.datasource")
     public DataSourceProperties citizenDataSourceProperties() {
@@ -39,13 +39,13 @@ class JdbcConfig {
         return new JdbcTemplate(winningTransactionDataSource());
     }
 
-    @Bean(name = "winningTransactionDataSource")
+    @Bean("winningTransactionDataSource")
     @ConfigurationProperties(prefix = "winning-transaction.spring.datasource.hikari")
     public DataSource winningTransactionDataSource() {
         return winningTransactionDataSourceProperties().initializeDataSourceBuilder().build();
     }
 
-    @Bean(name = "winningTransactionDataSourceProperties")
+    @Bean("winningTransactionDataSourceProperties")
     @ConfigurationProperties("winning-transaction.spring.datasource")
     public DataSourceProperties winningTransactionDataSourceProperties() {
         return new DataSourceProperties();

@@ -4,6 +4,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,39 +24,17 @@ import java.util.List;
 @Slf4j
 class CitizenRankingDaoImpl implements CitizenRankingDao {
 
-    private static final String UPDATE_CASHBACK_SQL = "update" +
-            " bpd_citizen.bpd_citizen_ranking" +
-            " set" +
-            " cashback_n = :cashback," +
-            " transaction_n = :transactionCount," +
-            " update_date_t = CURRENT_TIMESTAMP," +
-            " update_user_s = 'RANKING-PROCESSOR'" +
-            " where" +
-            " fiscal_code_c = :fiscalCode" +
-            " and award_period_id_n = :awardPeriodId";
-
-    public static final String FIND_ALL_ORDERED_BY_TRX_NUM_SQL = "select" +
-            " *" +
-            " from" +
-            " bpd_citizen.bpd_citizen_ranking" +
-            " where" +
-            " award_period_id_n = ?";
-
-    private static final String UPDATE_RANKING_SQL = "update" +
-            " bpd_citizen.bpd_citizen_ranking" +
-            " set" +
-            " ranking_n = :ranking" +
-            " where" +
-            " fiscal_code_c = :fiscalCode" +
-            " and award_period_id_n = :awardPeriodId";
-
+    public final String findAllOrderedByTrxNumSql;
+    private final String updateCashbackSql;
+    private final String updateRankingSql;
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
-    private final RowMapperResultSetExtractor<CitizenRanking> findallResultSetExtractor;
+    private final RowMapperResultSetExtractor<CitizenRanking> findallResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
 
 
     @Autowired
-    public CitizenRankingDaoImpl(@Qualifier("citizenJdbcTemplate") JdbcTemplate jdbcTemplate) {
+    public CitizenRankingDaoImpl(@Qualifier("citizenJdbcTemplate") JdbcTemplate jdbcTemplate,
+                                 @Value("${winning-transaction.extraction-query.elab-ranking.name}") String tableName) {
         if (log.isTraceEnabled()) {
             log.trace("CitizenRankingDaoImpl.CitizenRankingDaoImpl");
         }
@@ -64,7 +43,10 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         }
         this.jdbcTemplate = jdbcTemplate;
         namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
-        findallResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
+
+        updateCashbackSql = String.format("update %s set cashback_n = :cashback, transaction_n = :transactionCount, update_date_t = CURRENT_TIMESTAMP, update_user_s = 'RANKING-PROCESSOR' where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", tableName);
+        findAllOrderedByTrxNumSql = String.format("select * from %s where award_period_id_n = ?", tableName);
+        updateRankingSql = String.format("update %s set ranking_n = :ranking where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", tableName);
     }
 
 
@@ -77,7 +59,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
             log.debug("citizenRankings = {}", citizenRankings);
         }
         SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings.toArray());
-        return namedParameterJdbcTemplate.batchUpdate(UPDATE_CASHBACK_SQL, batchValues);
+        return namedParameterJdbcTemplate.batchUpdate(updateCashbackSql, batchValues);
     }
 
 
@@ -106,10 +88,16 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         return findAll(awardPeriodId, clauses.toString());
     }
 
-    private List<CitizenRanking> findAll(Long awardPeriodId, String clauses) {
-        return jdbcTemplate.query(connection -> connection.prepareStatement(FIND_ALL_ORDERED_BY_TRX_NUM_SQL + clauses),
-                preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
-                findallResultSetExtractor);
+    @Override
+    public int[] updateRanking(Collection<CitizenRanking> citizenRankings) {
+        if (log.isTraceEnabled()) {
+            log.trace("CitizenRankingDaoImpl.updateRanking");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("citizenRankings = {}", citizenRankings);
+        }
+        SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings.toArray());
+        return namedParameterJdbcTemplate.batchUpdate(updateRankingSql, batchValues);
     }
 
     @Override
@@ -128,17 +116,10 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         return findAll(awardPeriodId, clauses.toString());
     }
 
-
-    @Override
-    public int[] updateRanking(Collection<CitizenRanking> citizenRankings) {
-        if (log.isTraceEnabled()) {
-            log.trace("CitizenRankingDaoImpl.updateRanking");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("citizenRankings = {}", citizenRankings);
-        }
-        SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings.toArray());
-        return namedParameterJdbcTemplate.batchUpdate(UPDATE_RANKING_SQL, batchValues);
+    private List<CitizenRanking> findAll(Long awardPeriodId, String clauses) {
+        return jdbcTemplate.query(connection -> connection.prepareStatement(findAllOrderedByTrxNumSql + clauses),
+                preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
+                findallResultSetExtractor);
     }
 
 
