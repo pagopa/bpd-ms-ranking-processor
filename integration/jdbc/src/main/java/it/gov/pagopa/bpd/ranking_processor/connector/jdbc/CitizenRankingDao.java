@@ -15,7 +15,7 @@ public interface CitizenRankingDao {
     /**
      * Sort by transaction number with reverse order
      */
-    Sort SORT_BY_TRX_NUM_DESC = Sort.by(Sort.Direction.DESC, "transaction_n");
+    Sort FIND_ALL_PAGEABLE_SORT = Sort.by(Sort.Order.desc("transaction_n"), Sort.Order.asc("fiscal_code_c"));
 
     int[] updateCashback(List<CitizenRanking> citizenRankings);
 

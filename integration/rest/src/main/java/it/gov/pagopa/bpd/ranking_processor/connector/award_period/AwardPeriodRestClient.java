@@ -4,6 +4,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPer
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.List;
@@ -17,5 +18,9 @@ public interface AwardPeriodRestClient {
     @GetMapping(value = "${rest-client.award-period.actives.url}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseBody
     List<AwardPeriod> getActiveAwardPeriods();
+
+    @GetMapping(value = "${rest-client.award-period.findById.url}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @ResponseBody
+    AwardPeriod findById(@PathVariable("id") long awardPeriodId);
 
 }

@@ -102,7 +102,7 @@ public abstract class RankingUpdateStrategyTemplateTest {
     }
 
     private static PageRequest toPageable(SimplePageRequest pageRequest) {
-        return PageRequest.of(pageRequest.getPage(), pageRequest.getSize(), CitizenRankingDao.SORT_BY_TRX_NUM_DESC);
+        return PageRequest.of(pageRequest.getPage(), pageRequest.getSize(), CitizenRankingDao.FIND_ALL_PAGEABLE_SORT);
     }
 
     @Test(expected = RankingUpdateException.class)

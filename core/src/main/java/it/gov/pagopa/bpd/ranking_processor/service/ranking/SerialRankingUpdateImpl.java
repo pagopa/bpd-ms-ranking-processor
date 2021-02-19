@@ -51,7 +51,7 @@ public class SerialRankingUpdateImpl extends RankingUpdateStrategyTemplate {
 
 
     @Override
-    protected Map<Long, Set<CitizenRanking>> aggregateData(List<CitizenRanking> citizenRankings) {
+    protected NavigableMap<Long, Set<CitizenRanking>> aggregateData(List<CitizenRanking> citizenRankings) {
         if (log.isTraceEnabled()) {
             log.trace("SerialRankingUpdateImpl.aggregateData");
         }

@@ -24,6 +24,10 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
     protected final MutableInt lastAssignedRanking;
 
     private final CitizenRankingDao citizenRankingDao;
+    /**
+     * A set of latest (in terms of ranking) ties. Required to manage ties between each chunks
+     */
+    private Set<CitizenRanking> lastTies = Collections.emptySet();
 
 
     public RankingUpdateStrategyTemplate(CitizenRankingDao citizenRankingDao) {
@@ -51,13 +55,14 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
         Pageable pageRequest = PageRequest.of(simplePageRequest.getPage(),
                 simplePageRequest.getSize(),
-                CitizenRankingDao.SORT_BY_TRX_NUM_DESC);
+                CitizenRankingDao.FIND_ALL_PAGEABLE_SORT);
         List<CitizenRanking> citizenRankings = citizenRankingDao.findAll(awardPeriodId, pageRequest);
+        int totalExtractedRankings = citizenRankings.size();
 
-        Map<Long, Set<CitizenRanking>> tiedMap = aggregateData(citizenRankings);
+        citizenRankings.addAll(lastTies);
+        NavigableMap<Long, Set<CitizenRanking>> tiedMap = aggregateData(citizenRankings);
         setRanking(tiedMap);
 
-        int totalExtractedRankings = pageRequest.getPageNumber() * pageRequest.getPageSize() + citizenRankings.size();
         if (lastAssignedRanking.intValue() != totalExtractedRankings) {
             throw new IllegalStateException(String.format("Size of processed ranking records (%d) differs from the extracted one (%d)",
                     lastAssignedRanking.intValue(),
@@ -67,7 +72,10 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
         int[] affectedRows = citizenRankingDao.updateRanking(citizenRankings);
         checkErrors(citizenRankings.size(), affectedRows);
 
-        return citizenRankings.size();
+        lastTies = tiedMap.lastEntry().getValue();
+        lastAssignedRanking.subtract(lastTies.size());
+
+        return totalExtractedRankings;
     }
 
 
@@ -93,6 +101,6 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
     protected abstract void setRanking(Map<Long, Set<CitizenRanking>> tiedMap);
 
-    protected abstract Map<Long, Set<CitizenRanking>> aggregateData(List<CitizenRanking> citizenRankings);
+    protected abstract NavigableMap<Long, Set<CitizenRanking>> aggregateData(List<CitizenRanking> citizenRankings);
 
 }

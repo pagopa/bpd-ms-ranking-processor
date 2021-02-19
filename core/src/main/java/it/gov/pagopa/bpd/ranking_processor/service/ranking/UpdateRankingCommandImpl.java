@@ -1,5 +1,6 @@
 package it.gov.pagopa.bpd.ranking_processor.service.ranking;
 
+import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingSubProcessCommand;
 import lombok.extern.slf4j.Slf4j;
@@ -34,12 +35,12 @@ class UpdateRankingCommandImpl implements RankingSubProcessCommand {
     }
 
     @Override
-    public void execute(long awardPeriodId) {//TODO: manage tied between each chunks
+    public void execute(AwardPeriod awardPeriod) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateRankingCommandImpl.execute");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}", awardPeriodId);
+            log.debug("awardPeriodId = {}", awardPeriod);
         }
 
         int pageNumber = 0;
@@ -47,8 +48,8 @@ class UpdateRankingCommandImpl implements RankingSubProcessCommand {
         RankingUpdateStrategy rankingUpdateStrategy = getRankingUpdateStrategy();
         do {
             SimplePageRequest pageRequest = SimplePageRequest.of(pageNumber++, rankingUpdateLimit);
-            trxCount = rankingUpdateStrategy.process(awardPeriodId, pageRequest);
-        } while (rankingUpdateLimit == trxCount);
+            trxCount = rankingUpdateStrategy.process(awardPeriod.getAwardPeriodId(), pageRequest);
+        } while (trxCount >= rankingUpdateLimit);
     }
 
     public RankingUpdateStrategy getRankingUpdateStrategy() {

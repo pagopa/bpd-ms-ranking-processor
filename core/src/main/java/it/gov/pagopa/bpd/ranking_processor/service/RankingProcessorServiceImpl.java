@@ -49,7 +49,27 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
             throw new IllegalArgumentException("awardPeriodId can not be null");
         }
 
-        subProcesses.forEach(command -> command.execute(awardPeriodId));
+        //TODO: FIXME
+//        AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);
+        AwardPeriod awardPeriod = AwardPeriod.builder().awardPeriodId(awardPeriodId).build();
+
+        subProcesses.forEach(command -> command.execute(awardPeriod));
+    }
+
+
+    private void process(AwardPeriod awardPeriod) {
+        if (log.isTraceEnabled()) {
+            log.trace("RankingProcessorServiceImpl.process");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("awardPeriodId = {}", awardPeriod);
+        }
+
+        if (awardPeriod == null) {
+            throw new IllegalArgumentException("awardPeriod can not be null");
+        }
+
+        subProcesses.forEach(command -> command.execute(awardPeriod));
     }
 
 }

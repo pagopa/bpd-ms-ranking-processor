@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @Data
 @Builder
 @EqualsAndHashCode(of = {"fiscalCode", "awardPeriodId"}, callSuper = false)
-@ToString(of = {"fiscalCode", "ranking", "transactionNumber", "totalCashback"})
+@ToString(of = {"fiscalCode", "ranking", "transactionNumber", "totalCashback", "awardPeriodId"})
 public class CitizenRanking {
 
     @Column("fiscal_code_c")

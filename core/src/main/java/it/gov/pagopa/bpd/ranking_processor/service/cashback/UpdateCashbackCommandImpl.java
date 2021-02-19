@@ -1,5 +1,6 @@
 package it.gov.pagopa.bpd.ranking_processor.service.cashback;
 
+import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingSubProcessCommand;
@@ -35,12 +36,12 @@ class UpdateCashbackCommandImpl implements RankingSubProcessCommand {
     }
 
     @Override
-    public void execute(long awardPeriodId) {
+    public void execute(AwardPeriod awardPeriod) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateCashbackCommandImpl.execute");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}", awardPeriodId);
+            log.debug("awardPeriodId = {}", awardPeriod);
         }
 
         CashbackUpdateStrategy cashbackUpdateStrategy = getCashbackUpdateStrategy();
@@ -48,8 +49,8 @@ class UpdateCashbackCommandImpl implements RankingSubProcessCommand {
             int trxCount;
             do {
                 SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
-                trxCount = cashbackUpdateStrategy.process(awardPeriodId, trxType, pageRequest);
-            } while (cashbackUpdateLimit == trxCount);
+                trxCount = cashbackUpdateStrategy.process(awardPeriod.getAwardPeriodId(), trxType, pageRequest);
+            } while (trxCount == cashbackUpdateLimit);
         }
     }
 

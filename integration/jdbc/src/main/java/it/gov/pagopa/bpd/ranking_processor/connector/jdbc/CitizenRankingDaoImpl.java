@@ -128,12 +128,21 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         if (log.isDebugEnabled()) {
             log.debug("citizenRankings = {}", citizenRankings);
         }
+
         SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings.toArray());
         return namedParameterJdbcTemplate.batchUpdate(updateRankingSql, batchValues);
     }
 
 
     private List<CitizenRanking> findAll(Long awardPeriodId, String clauses) {
+        if (log.isTraceEnabled()) {
+            log.trace("CitizenRankingDaoImpl.findAll");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("awardPeriodId = {}, clauses = {}", awardPeriodId, clauses);
+        }
+        log.info("findAllOrderedByTrxNumSql + clauses = {}", findAllOrderedByTrxNumSql + clauses);
+
         return jdbcTemplate.query(connection -> connection.prepareStatement(findAllOrderedByTrxNumSql + clauses),
                 preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
                 findallResultSetExtractor);
