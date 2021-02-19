@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.RowMapperResultSetExtractor;
@@ -18,8 +17,10 @@ import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsertOperations;
 import org.springframework.stereotype.Service;
 
+import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -40,7 +41,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
 
     @Autowired
     public CitizenRankingDaoImpl(@Qualifier("citizenJdbcTemplate") JdbcTemplate jdbcTemplate,
-                                 @Value("${winning-transaction.extraction-query.elab-ranking.name}") String tableName) {
+                                 @Value("${citizen.dao.table.name}") String tableName) {
         if (log.isTraceEnabled()) {
             log.trace("CitizenRankingDaoImpl.CitizenRankingDaoImpl");
         }
@@ -50,8 +51,10 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
 
         this.jdbcTemplate = jdbcTemplate;
         namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
-        simpleJdbcInsertOps = new SimpleJdbcInsert(jdbcTemplate);
-        updateCashbackSql = String.format("update %s set cashback_n = :cashback, transaction_n = :transactionCount, update_date_t = CURRENT_TIMESTAMP, update_user_s = '%s' where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", tableName, USER_VALUE);
+        simpleJdbcInsertOps = new SimpleJdbcInsert(jdbcTemplate)
+                .withTableName(tableName)
+                .usingColumns("fiscal_code_c", "award_period_id_n", "transaction_n", "cashback_n", "insert_date_t", "insert_user_s");
+        updateCashbackSql = String.format("update %s set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = CURRENT_TIMESTAMP, update_user_s = '%s' where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", tableName, USER_VALUE);
         findAllOrderedByTrxNumSql = String.format("select * from %s where award_period_id_n = ?", tableName);
         updateRankingSql = String.format("update %s set ranking_n = :ranking where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", tableName);
     }
@@ -78,13 +81,14 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         }
 
         SqlParameterSource[] batchValues = new SqlParameterSource[citizenRankings.size()];
+        OffsetDateTime now = OffsetDateTime.now();
         for (int i = 0; i < citizenRankings.size(); i++) {
             SqlParameterSource parameters = new MapSqlParameterSource()
                     .addValue("fiscal_code_c", citizenRankings.get(i).getFiscalCode())
                     .addValue("award_period_id_n", citizenRankings.get(i).getAwardPeriodId())
                     .addValue("transaction_n", citizenRankings.get(i).getTransactionNumber())
-                    .addValue("cashback_n", citizenRankings.get(i).getRanking())
-                    .addValue("insert_date_t", "CURRENT_TIMESTAMP")
+                    .addValue("cashback_n", citizenRankings.get(i).getTotalCashback().doubleValue())
+                    .addValue("insert_date_t", now, JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber())
                     .addValue("insert_user_s", USER_VALUE);
             batchValues[i] = parameters;
         }
@@ -94,20 +98,18 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
 
 
     @Override
-    public List<CitizenRanking> findAll(Long awardPeriodId, Pageable pageable) {
+    public List<CitizenRanking> findAll(long awardPeriodId, Pageable pageable) {
         if (log.isTraceEnabled()) {
             log.trace("CitizenRankingDaoImpl.findAll");
         }
         if (log.isDebugEnabled()) {
             log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
         }
-        if (awardPeriodId == null) {
-            throw new IllegalArgumentException("awardPeriodId can not be null");
-        }
+
         StringBuilder clauses = new StringBuilder();
         if (pageable != null) {
             if (!pageable.getSort().isEmpty()) {
-                clauses.append(" ").append(pageable.getSort().toString().replace(":", ""));
+                clauses.append(" ORDER BY ").append(pageable.getSort().toString().replace(":", ""));
             }
             if (pageable.isPaged()) {
                 clauses.append(" LIMIT ").append(pageable.getPageSize())
@@ -130,21 +132,6 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         return namedParameterJdbcTemplate.batchUpdate(updateRankingSql, batchValues);
     }
 
-    @Override
-    public List<CitizenRanking> findAll(Long awardPeriodId, Sort sort) {
-        if (log.isTraceEnabled()) {
-            log.trace("CitizenRankingDaoImpl.findAll");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, sort = {}", awardPeriodId, sort);
-        }
-        StringBuilder clauses = new StringBuilder();
-        if (sort != null && sort.isSorted()) {
-            clauses.append(" ").append(sort.toString().replace(":", ""));
-        }
-
-        return findAll(awardPeriodId, clauses.toString());
-    }
 
     private List<CitizenRanking> findAll(Long awardPeriodId, String clauses) {
         return jdbcTemplate.query(connection -> connection.prepareStatement(findAllOrderedByTrxNumSql + clauses),
@@ -169,8 +156,8 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
                     .totalCashback(rs.getBigDecimal("cashback_n"))
                     .transactionNumber(rs.getLong("transaction_n"))
                     .ranking(rs.getLong("ranking_n"))
-                    .rankingMinRequired(rs.getLong("ranking_min_n"))
-                    .maxTotalCashback(rs.getBigDecimal("max_cashback_n"))
+//                    .rankingMinRequired(rs.getLong("ranking_min_n"))
+//                    .maxTotalCashback(rs.getBigDecimal("max_cashback_n"))
                     .build();
         }
     }

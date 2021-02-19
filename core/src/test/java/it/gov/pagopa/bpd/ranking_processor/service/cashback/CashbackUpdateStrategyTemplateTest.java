@@ -106,9 +106,8 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 });
     }
 
-    @Before
-    public void init() {
-        missRecords.clear();
+    private static PageRequest toPageable(SimplePageRequest pageRequest) {
+        return PageRequest.of(pageRequest.getPage(), pageRequest.getSize());
     }
 
     public CashbackUpdateStrategyTemplateTest() {
@@ -140,8 +139,10 @@ public abstract class CashbackUpdateStrategyTemplateTest {
 
     public abstract CashbackUpdateStrategy getCashbackUpdateService();
 
-    private PageRequest toPageable(SimplePageRequest pageRequest) {
-        return PageRequest.of(pageRequest.getPage(), pageRequest.getSize());
+    @Before
+    public void init() {
+        error = null;
+        missRecords.clear();
     }
 
     @Test
@@ -331,7 +332,6 @@ public abstract class CashbackUpdateStrategyTemplateTest {
     private enum Error {
         UPDATE_CASHBACK,
         INSERT_CASHBACK,
-        UPDATE_RANKING,
         UPDATE_TRANSACTION
     }
 
@@ -339,7 +339,6 @@ public abstract class CashbackUpdateStrategyTemplateTest {
     private enum MissRecord {
         UPDATE_CASHBACK,
         INSERT_CASHBACK,
-        UPDATE_RANKING,
         UPDATE_TRANSACTION
     }
 

@@ -62,11 +62,6 @@
                 <type>test-jar</type>
             </dependency>
             <dependency>
-                <groupId>it.gov.pagopa.bpd.commons.api</groupId>
-                <artifactId>bpd-commons-api-rest</artifactId>
-                <version>${bpd-commons.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>it.gov.pagopa.bpd.commons</groupId>
                 <artifactId>bpd-commons-core</artifactId>
                 <version>${bpd-commons.version}</version>

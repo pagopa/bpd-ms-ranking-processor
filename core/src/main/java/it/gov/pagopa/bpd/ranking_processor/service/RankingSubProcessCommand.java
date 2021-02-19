@@ -5,6 +5,6 @@ package it.gov.pagopa.bpd.ranking_processor.service;
  */
 public interface RankingSubProcessCommand {
 
-    void execute(Long awardPeriodId);
+    void execute(long awardPeriodId);
 
 }

@@ -9,10 +9,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.sql.Statement;
+import java.util.*;
 
 /**
  * Template Method pattern of {@link RankingUpdateStrategy}
@@ -20,6 +18,7 @@ import java.util.Set;
 @Slf4j
 abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
+    static final String ERROR_MESSAGE_TEMPLATE = "updateRanking: affected %d rows of %d";
     protected static final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing(CitizenRanking::getFiscalCode);
 
     protected final MutableInt lastAssignedRanking;
@@ -66,11 +65,29 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
         }
 
         int[] affectedRows = citizenRankingDao.updateRanking(citizenRankings);
-        if (affectedRows.length != citizenRankings.size()) {
-            log.warn("updateRanking: affected {} rows of {}", affectedRows.length, citizenRankings.size());
-        }
+        checkErrors(citizenRankings.size(), affectedRows);
 
         return citizenRankings.size();
+    }
+
+
+    private void checkErrors(int statementsCount, int[] affectedRows) {
+        if (affectedRows.length != statementsCount) {
+            String message = String.format(ERROR_MESSAGE_TEMPLATE, affectedRows.length, statementsCount);
+            log.error(message);
+            throw new RankingUpdateException(message);
+
+        } else {
+            long failedUpdateCount = Arrays.stream(affectedRows)
+                    .filter(value -> value != 1 && value != Statement.SUCCESS_NO_INFO)
+                    .count();
+
+            if (failedUpdateCount > 0) {
+                String message = String.format(ERROR_MESSAGE_TEMPLATE, statementsCount - failedUpdateCount, statementsCount);
+                log.error(message);
+                throw new RankingUpdateException(message);
+            }
+        }
     }
 
 

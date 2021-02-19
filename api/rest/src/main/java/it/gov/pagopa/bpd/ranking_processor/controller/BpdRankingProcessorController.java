@@ -4,6 +4,7 @@ import io.swagger.annotations.Api;
 import it.gov.pagopa.bpd.ranking_processor.controller.model.RankingProcessorDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +17,7 @@ import javax.validation.Valid;
  */
 @Api(tags = "Bonus Pagamenti Digitali ranking-processor Controller")
 @RequestMapping("/bpd/ranking-processor")
+@Validated
 public interface BpdRankingProcessorController {
 
     @PostMapping(value = "/", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)

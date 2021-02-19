@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Statement;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
@@ -79,6 +80,7 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
                     failedUpdateRankings.add(rankings.get(i));
                 }
             }
+
             affectedRows = citizenRankingDao.insertCashback(failedUpdateRankings);
             checkErrors(failedUpdateRankings.size(), affectedRows, "insertCashback");
         }
@@ -98,7 +100,7 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
 
         } else {
             long failedUpdateCount = Arrays.stream(affectedRows)
-                    .filter(value -> value < 1)
+                    .filter(value -> value != 1 && value != Statement.SUCCESS_NO_INFO)
                     .count();
 
             if (failedUpdateCount > 0) {

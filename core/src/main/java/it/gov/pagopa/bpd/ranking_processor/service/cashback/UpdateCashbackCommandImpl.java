@@ -35,7 +35,7 @@ class UpdateCashbackCommandImpl implements RankingSubProcessCommand {
     }
 
     @Override
-    public void execute(Long awardPeriodId) {
+    public void execute(long awardPeriodId) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateCashbackCommandImpl.execute");
         }
@@ -45,10 +45,9 @@ class UpdateCashbackCommandImpl implements RankingSubProcessCommand {
 
         CashbackUpdateStrategy cashbackUpdateStrategy = getCashbackUpdateStrategy();
         for (WinningTransaction.TransactionType trxType : WinningTransaction.TransactionType.values()) {
-            int pageNumber = 0;
             int trxCount;
             do {
-                SimplePageRequest pageRequest = SimplePageRequest.of(pageNumber++, cashbackUpdateLimit);
+                SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
                 trxCount = cashbackUpdateStrategy.process(awardPeriodId, trxType, pageRequest);
             } while (cashbackUpdateLimit == trxCount);
         }

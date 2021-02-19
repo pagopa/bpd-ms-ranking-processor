@@ -64,14 +64,6 @@ public class CitizenRankingDaoImplTest extends BaseTest {
         Assert.assertNotNull(results);
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void findAllKO_invalidAwardPeriod() {
-        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
-                .thenReturn(Collections.emptyList());
-
-        citizenRankingDao.findAll(null, (Pageable) null);
-    }
-
 
     @Test
     public void updateRankingOK() {
@@ -101,8 +93,8 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                     .totalCashback(BigDecimal.ONE)
                     .transactionNumber(1L)
                     .ranking(1L)
-                    .rankingMinRequired(1L)
-                    .maxTotalCashback(BigDecimal.ONE)
+//                    .rankingMinRequired(1L)
+//                    .maxTotalCashback(BigDecimal.ONE)
                     .build();
 
             ResultSet resultSet = Mockito.mock(ResultSet.class);
@@ -117,10 +109,10 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                         .thenReturn(citizenRanking.getTransactionNumber());
                 Mockito.when(resultSet.getLong("ranking_n"))
                         .thenReturn(citizenRanking.getRanking());
-                Mockito.when(resultSet.getLong("ranking_min_n"))
-                        .thenReturn(citizenRanking.getRankingMinRequired());
-                Mockito.when(resultSet.getBigDecimal("max_cashback_n"))
-                        .thenReturn(citizenRanking.getMaxTotalCashback());
+//                Mockito.when(resultSet.getLong("ranking_min_n"))
+//                        .thenReturn(citizenRanking.getRankingMinRequired());
+//                Mockito.when(resultSet.getBigDecimal("max_cashback_n"))
+//                        .thenReturn(citizenRanking.getMaxTotalCashback());
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
                 Assert.fail(throwables.getMessage());
@@ -134,8 +126,8 @@ public class CitizenRankingDaoImplTest extends BaseTest {
             Assert.assertEquals(citizenRanking.getTotalCashback(), result.getTotalCashback());
             Assert.assertEquals(citizenRanking.getTransactionNumber(), result.getTransactionNumber());
             Assert.assertEquals(citizenRanking.getRanking(), result.getRanking());
-            Assert.assertEquals(citizenRanking.getRankingMinRequired(), result.getRankingMinRequired());
-            Assert.assertEquals(citizenRanking.getMaxTotalCashback(), result.getMaxTotalCashback());
+//            Assert.assertEquals(citizenRanking.getRankingMinRequired(), result.getRankingMinRequired());
+//            Assert.assertEquals(citizenRanking.getMaxTotalCashback(), result.getMaxTotalCashback());
         }
 
     }

@@ -1,5 +1,6 @@
 package it.gov.pagopa.bpd.ranking_processor.controller;
 
+import eu.sia.meda.core.controller.StatelessController;
 import it.gov.pagopa.bpd.ranking_processor.controller.model.RankingProcessorDto;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Slf4j
-class BpdRankingProcessorControllerImpl implements BpdRankingProcessorController {
+class BpdRankingProcessorControllerImpl extends StatelessController implements BpdRankingProcessorController {
 
     private final RankingProcessorService rankingProcessorService;
 

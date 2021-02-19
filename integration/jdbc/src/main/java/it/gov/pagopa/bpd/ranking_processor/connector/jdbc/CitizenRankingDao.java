@@ -21,9 +21,7 @@ public interface CitizenRankingDao {
 
     int[] insertCashback(List<CitizenRanking> citizenRankings);
 
-    List<CitizenRanking> findAll(Long awardPeriodId, Pageable pageable);
-
-    List<CitizenRanking> findAll(Long awardPeriodId, Sort sort);
+    List<CitizenRanking> findAll(long awardPeriodId, Pageable pageable);
 
     int[] updateRanking(Collection<CitizenRanking> citizenRankings);
 

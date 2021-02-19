@@ -27,8 +27,8 @@ public class WinningTransaction implements Serializable {
 
     public enum TransactionType {
         PAYMENT,
-        TOTAL_TRANSFER,
-        PARTIAL_TRANSFER
+        TOTAL_TRANSFER
+//        PARTIAL_TRANSFER
     }
 
 }

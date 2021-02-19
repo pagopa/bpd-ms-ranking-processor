@@ -34,7 +34,7 @@ class UpdateRankingCommandImpl implements RankingSubProcessCommand {
     }
 
     @Override
-    public void execute(Long awardPeriodId) {//TODO: manage tied between each chunks
+    public void execute(long awardPeriodId) {//TODO: manage tied between each chunks
         if (log.isTraceEnabled()) {
             log.trace("UpdateRankingCommandImpl.execute");
         }

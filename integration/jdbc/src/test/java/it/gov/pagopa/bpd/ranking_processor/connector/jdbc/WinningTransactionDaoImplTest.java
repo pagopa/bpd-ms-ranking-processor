@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
 
@@ -104,8 +103,8 @@ public class WinningTransactionDaoImplTest extends BaseTest {
                         .thenReturn(winningTransaction.getIdTrxAcquirer());
                 Mockito.when(resultSet.getString("acquirer_c"))
                         .thenReturn(winningTransaction.getAcquirerCode());
-                Mockito.when(resultSet.getString("trx_timestamp_t"))
-                        .thenReturn(winningTransaction.getTrxDate().toString());
+                Mockito.when(resultSet.getObject("trx_timestamp_t", OffsetDateTime.class))
+                        .thenReturn(winningTransaction.getTrxDate());
                 Mockito.when(resultSet.getString("operation_type_c"))
                         .thenReturn(winningTransaction.getOperationType());
                 Mockito.when(resultSet.getString("acquirer_id_s"))
@@ -132,20 +131,5 @@ public class WinningTransactionDaoImplTest extends BaseTest {
             Assert.assertEquals(winningTransaction.getAmount(), result.getAmount());
             Assert.assertEquals(winningTransaction.getScore(), result.getScore());
         }
-
-        @Test(expected = DateTimeParseException.class)
-        public void mapRowKO_invalidDateTimeFormat() throws SQLException {
-            ResultSet resultSet = Mockito.mock(ResultSet.class);
-            try {
-                Mockito.when(resultSet.getString("trx_timestamp_t"))
-                        .thenReturn("05/02/2021");
-            } catch (SQLException throwables) {
-                throwables.printStackTrace();
-                Assert.fail(throwables.getMessage());
-            }
-
-            winningTransactionMapper.mapRow(resultSet, 0);
-        }
-
     }
 }
