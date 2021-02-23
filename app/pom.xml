@@ -28,7 +28,7 @@
                 <configuration>
                     <skip>false</skip>
                     <finalName>bpd-ms-${project.parent.artifactId}-${project.parent.version}-FATJAR</finalName>
-                    <outputDirectory>../../target</outputDirectory>
+                    <outputDirectory>../target</outputDirectory>
                 </configuration>
             </plugin>
         </plugins>
