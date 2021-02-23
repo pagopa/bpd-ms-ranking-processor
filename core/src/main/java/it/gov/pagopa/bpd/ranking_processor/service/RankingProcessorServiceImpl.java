@@ -30,7 +30,7 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
         log.info("RankingProcessorServiceImpl.execute start");
 
         List<AwardPeriod> activeAwardPeriods = awardPeriodRestClient.getActiveAwardPeriods();
-        activeAwardPeriods.forEach(awardPeriod -> process(awardPeriod.getAwardPeriodId()));
+        activeAwardPeriods.forEach(this::process);
 
         log.info("RankingProcessorServiceImpl.execute end");
     }
@@ -49,15 +49,8 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
             throw new IllegalArgumentException("awardPeriodId can not be null");
         }
 
-        //TODO: FIXME
-//        AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);
-        AwardPeriod awardPeriod = AwardPeriod.builder()
-                .awardPeriodId(awardPeriodId)
-                .minPosition(1000L)
-                .maxPeriodCashback(150L)
-                .build();
-
-        subProcesses.forEach(command -> command.execute(awardPeriod));
+        AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);
+        process(awardPeriod);
     }
 
 

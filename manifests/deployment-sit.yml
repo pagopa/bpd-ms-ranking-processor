@@ -20,12 +20,12 @@ spec:
           envFrom:
             - secretRef:
                 name: postgres-credentials
-            - secretRef:
-                name: bpdmsrankingprocessor
             - configMapRef:
                 name: eventhub-logging
             - configMapRef:
                 name: bpdmsrankingprocessor
+            - configMapRef:
+                name: rest-client
             - configMapRef:
                 name: jvm
           livenessProbe:
