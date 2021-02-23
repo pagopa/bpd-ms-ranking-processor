@@ -6,12 +6,14 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
+import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Statement;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
@@ -77,12 +79,18 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
             for (int i = 0; i < affectedRows.length; i++) {
 
                 if (affectedRows[i] < 1) {
+                    rankings.get(i).setInsertDate(rankings.get(i).getUpdateDate());
+                    rankings.get(i).setInsertUser(rankings.get(i).getUpdateUser());
+                    rankings.get(i).setUpdateDate(null);
+                    rankings.get(i).setUpdateUser(null);
                     failedUpdateRankings.add(rankings.get(i));
                 }
             }
 
-            affectedRows = citizenRankingDao.insertCashback(failedUpdateRankings);
-            checkErrors(failedUpdateRankings.size(), affectedRows, "insertCashback");
+            if (!failedUpdateRankings.isEmpty()) {
+                affectedRows = citizenRankingDao.insertCashback(failedUpdateRankings);
+                checkErrors(failedUpdateRankings.size(), affectedRows, "insertCashback");
+            }
         }
 
         affectedRows = winningTransactionDao.updateProcessedTransaction(transactions);
@@ -120,12 +128,19 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
             log.debug("awardPeriodId = {}, transactions = {}", awardPeriodId, transactions);
         }
 
+        OffsetDateTime now = OffsetDateTime.now();
         Stream<CitizenRanking> stream = transactions.stream()
+                .peek(trx -> {
+                    trx.setUpdateDate(now);
+                    trx.setUpdateUser(RankingProcessorService.PROCESS_NAME);
+                })
                 .map(trx -> CitizenRanking.builder()
                         .fiscalCode(trx.getFiscalCode())
                         .awardPeriodId(awardPeriodId)
                         .totalCashback(trx.getScore())
                         .transactionNumber("01".equals(trx.getOperationType()) ? -1L : 1L)
+                        .updateDate(now)
+                        .updateUser(RankingProcessorService.PROCESS_NAME)
                         .build());
 
         Map<String, CitizenRanking> cashbackMap =

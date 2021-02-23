@@ -29,14 +29,14 @@ class BpdRankingProcessorControllerImpl extends StatelessController implements B
 
     @Override
     public void execute(RankingProcessorDto rankingProcessorDto) {
-        if (log.isTraceEnabled()) {
-            log.trace("BpdRankingProcessorControllerImpl.execute");
-        }
+        log.info("BpdRankingProcessorControllerImpl.execute start");
         if (log.isDebugEnabled()) {
             log.debug("rankingProcessorDto = {}", rankingProcessorDto);
         }
 
         rankingProcessorService.process(rankingProcessorDto.getAwardPeriodId());
+
+        log.info("BpdRankingProcessorControllerImpl.execute end");
     }
 
 }

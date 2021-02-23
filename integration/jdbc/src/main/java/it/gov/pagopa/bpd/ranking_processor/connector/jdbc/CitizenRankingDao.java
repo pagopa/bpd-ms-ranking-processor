@@ -1,6 +1,7 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
+import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRankingExt;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
@@ -13,7 +14,7 @@ import java.util.List;
 public interface CitizenRankingDao {
 
     /**
-     * Sort by transaction number with reverse order
+     * Sort to retrieve citizens sorted by their ranking
      */
     Sort FIND_ALL_PAGEABLE_SORT = Sort.by(Sort.Order.desc("transaction_n"), Sort.Order.asc("fiscal_code_c"));
 
@@ -25,4 +26,7 @@ public interface CitizenRankingDao {
 
     int[] updateRanking(Collection<CitizenRanking> citizenRankings);
 
+    int updateRankingExt(CitizenRankingExt rankingExt);
+
+    int insertRankingExt(CitizenRankingExt rankingExt);
 }

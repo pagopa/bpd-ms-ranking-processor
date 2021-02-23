@@ -51,7 +51,11 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
 
         //TODO: FIXME
 //        AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);
-        AwardPeriod awardPeriod = AwardPeriod.builder().awardPeriodId(awardPeriodId).build();
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(awardPeriodId)
+                .minPosition(1000L)
+                .maxPeriodCashback(150L)
+                .build();
 
         subProcesses.forEach(command -> command.execute(awardPeriod));
     }

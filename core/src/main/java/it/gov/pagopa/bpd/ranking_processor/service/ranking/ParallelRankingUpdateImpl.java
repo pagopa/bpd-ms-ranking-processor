@@ -2,12 +2,14 @@ package it.gov.pagopa.bpd.ranking_processor.service.ranking;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
+import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
@@ -44,13 +46,19 @@ public class ParallelRankingUpdateImpl extends RankingUpdateStrategyTemplate {
             log.debug("tiedMap = {}", tiedMap);
         }
 
+        OffsetDateTime now = OffsetDateTime.now();
         for (Set<CitizenRanking> ties : tiedMap.values()) {
 
             int startRankingChunk = lastAssignedRanking.getValue() + 1;
             CitizenRanking[] tiesArray = ties.toArray(new CitizenRanking[ties.size()]);
             IntStream.range(startRankingChunk, startRankingChunk + tiesArray.length)
                     .parallel()
-                    .forEach(i -> tiesArray[i - startRankingChunk].setRanking((long) i));
+                    .forEach(i -> {
+                        CitizenRanking citizenRanking = tiesArray[i - startRankingChunk];
+                        citizenRanking.setRanking((long) i);
+                        citizenRanking.setUpdateDate(now);
+                        citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
+                    });
             lastAssignedRanking.add(tiesArray.length);
         }
     }

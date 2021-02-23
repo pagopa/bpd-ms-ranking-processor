@@ -44,12 +44,14 @@ class UpdateRankingCommandImpl implements RankingSubProcessCommand {
         }
 
         int pageNumber = 0;
-        int trxCount;
+        int citizensCount;
         RankingUpdateStrategy rankingUpdateStrategy = getRankingUpdateStrategy();
         do {
             SimplePageRequest pageRequest = SimplePageRequest.of(pageNumber++, rankingUpdateLimit);
-            trxCount = rankingUpdateStrategy.process(awardPeriod.getAwardPeriodId(), pageRequest);
-        } while (trxCount >= rankingUpdateLimit);
+            citizensCount = rankingUpdateStrategy.process(awardPeriod.getAwardPeriodId(), pageRequest);
+        } while (citizensCount >= rankingUpdateLimit);
+
+        rankingUpdateStrategy.updateRankingExt(awardPeriod);
     }
 
     public RankingUpdateStrategy getRankingUpdateStrategy() {

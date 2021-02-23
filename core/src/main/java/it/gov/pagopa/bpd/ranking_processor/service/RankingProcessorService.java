@@ -5,6 +5,8 @@ package it.gov.pagopa.bpd.ranking_processor.service;
  */
 public interface RankingProcessorService {
 
+    String PROCESS_NAME = "RANKING-PROCESSOR";
+
     void process(Long awardPeriodId);
 
 }

@@ -3,6 +3,8 @@ package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 import it.gov.pagopa.bpd.common.BaseTest;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
+import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRankingExt;
+import lombok.SneakyThrows;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -10,7 +12,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.*;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.core.simple.SimpleJdbcInsertOperations;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -24,10 +29,21 @@ public class CitizenRankingDaoImplTest extends BaseTest {
 
     private final JdbcTemplate jdbcTemplateMock;
     private final CitizenRankingDaoImpl citizenRankingDao;
+    private final SimpleJdbcInsertOperations insertRankingOpsMock;
+    private final SimpleJdbcInsertOperations insertRankingExtOpsMock;
 
+    @SneakyThrows
     public CitizenRankingDaoImplTest() {
         jdbcTemplateMock = Mockito.mock(JdbcTemplate.class);
-        citizenRankingDao = new CitizenRankingDaoImpl(jdbcTemplateMock, "bpd_citizen_ranking");
+        citizenRankingDao = new CitizenRankingDaoImpl(jdbcTemplateMock, "bpd_citizen_ranking", "bpd_citizen_ranking_ext");
+        Field insertRankingOps = CitizenRankingDaoImpl.class.getDeclaredField("insertRankingOps");
+        insertRankingOps.setAccessible(true);
+        insertRankingOpsMock = Mockito.mock(SimpleJdbcInsertOperations.class);
+        insertRankingOps.set(citizenRankingDao, insertRankingOpsMock);
+        Field insertRankingExtOps = CitizenRankingDaoImpl.class.getDeclaredField("insertRankingExtOps");
+        insertRankingExtOps.setAccessible(true);
+        insertRankingExtOpsMock = Mockito.mock(SimpleJdbcInsertOperations.class);
+        insertRankingExtOps.set(citizenRankingDao, insertRankingOpsMock);
     }
 
 
@@ -37,6 +53,18 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                 .thenReturn(new int[]{});
 
         int[] affectedRows = citizenRankingDao.updateCashback(Collections.emptyList());
+
+        Assert.assertNotNull(affectedRows);
+        Assert.assertEquals(0, affectedRows.length);
+    }
+
+
+    @Test
+    public void insertCashbackOK() {
+        Mockito.when(insertRankingOpsMock.executeBatch(any(SqlParameterSource[].class)))
+                .thenReturn(new int[]{});
+
+        int[] affectedRows = citizenRankingDao.insertCashback(Collections.emptyList());
 
         Assert.assertNotNull(affectedRows);
         Assert.assertEquals(0, affectedRows.length);
@@ -77,6 +105,22 @@ public class CitizenRankingDaoImplTest extends BaseTest {
     }
 
 
+    @Test
+    public void updateRankingExtOK() {
+        int result = citizenRankingDao.updateRankingExt(CitizenRankingExt.builder().build());
+
+        Assert.assertEquals(0, result);
+    }
+
+
+    @Test
+    public void insertRankingExtOK() {
+        int result = citizenRankingDao.insertRankingExt(CitizenRankingExt.builder().build());
+
+        Assert.assertEquals(0, result);
+    }
+
+
     public static class CitizenRankingMapperTest {
 
         private final CitizenRankingDaoImpl.CitizenRankingMapper citizenRankingMapper;
@@ -93,8 +137,6 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                     .totalCashback(BigDecimal.ONE)
                     .transactionNumber(1L)
                     .ranking(1L)
-//                    .rankingMinRequired(1L)
-//                    .maxTotalCashback(BigDecimal.ONE)
                     .build();
 
             ResultSet resultSet = Mockito.mock(ResultSet.class);
@@ -109,10 +151,6 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                         .thenReturn(citizenRanking.getTransactionNumber());
                 Mockito.when(resultSet.getLong("ranking_n"))
                         .thenReturn(citizenRanking.getRanking());
-//                Mockito.when(resultSet.getLong("ranking_min_n"))
-//                        .thenReturn(citizenRanking.getRankingMinRequired());
-//                Mockito.when(resultSet.getBigDecimal("max_cashback_n"))
-//                        .thenReturn(citizenRanking.getMaxTotalCashback());
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
                 Assert.fail(throwables.getMessage());
@@ -126,8 +164,6 @@ public class CitizenRankingDaoImplTest extends BaseTest {
             Assert.assertEquals(citizenRanking.getTotalCashback(), result.getTotalCashback());
             Assert.assertEquals(citizenRanking.getTransactionNumber(), result.getTransactionNumber());
             Assert.assertEquals(citizenRanking.getRanking(), result.getRanking());
-//            Assert.assertEquals(citizenRanking.getRankingMinRequired(), result.getRankingMinRequired());
-//            Assert.assertEquals(citizenRanking.getMaxTotalCashback(), result.getMaxTotalCashback());
         }
 
     }

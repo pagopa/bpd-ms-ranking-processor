@@ -132,8 +132,6 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 .updateProcessedTransaction(anyCollection());
         BDDMockito.verify(citizenRankingDaoMock, times(1))
                 .updateCashback(anyList());
-        BDDMockito.verify(citizenRankingDaoMock, times(1))
-                .insertCashback(anyList());
         verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
     }
 
@@ -284,8 +282,6 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                     .findTransactionToProcess(eq(awardPeriodId), eq(TransactionType.PAYMENT), eq(toPageable(pageRequest)));
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateCashback(anyList());
-            BDDMockito.verify(citizenRankingDaoMock, times(1))
-                    .insertCashback(anyList());
             BDDMockito.verify(winningTransactionDaoMock, times(1))
                     .updateProcessedTransaction(anyCollection());
             verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
@@ -318,8 +314,6 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                     .findTransactionToProcess(eq(awardPeriodId), eq(TransactionType.PAYMENT), eq(toPageable(pageRequest)));
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateCashback(anyList());
-            BDDMockito.verify(citizenRankingDaoMock, times(1))
-                    .insertCashback(anyList());
             BDDMockito.verify(winningTransactionDaoMock, times(1))
                     .updateProcessedTransaction(anyCollection());
             verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);

@@ -2,12 +2,14 @@ package it.gov.pagopa.bpd.ranking_processor.service.ranking;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
+import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,10 +43,13 @@ public class SerialRankingUpdateImpl extends RankingUpdateStrategyTemplate {
             log.debug("tiedMap = {}", tiedMap);
         }
 
+        OffsetDateTime now = OffsetDateTime.now();
         for (Set<CitizenRanking> ties : tiedMap.values()) {
 
             for (CitizenRanking citizenRanking : ties) {
                 citizenRanking.setRanking((long) lastAssignedRanking.incrementAndGet());
+                citizenRanking.setUpdateDate(now);
+                citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
             }
         }
     }

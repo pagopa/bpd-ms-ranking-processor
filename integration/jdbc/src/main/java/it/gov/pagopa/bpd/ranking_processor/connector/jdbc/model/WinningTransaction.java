@@ -23,6 +23,8 @@ public class WinningTransaction implements Serializable {
     private BigDecimal score;
     private String acquirerId;
     private String fiscalCode;
+    private OffsetDateTime updateDate;
+    private String updateUser;
 
 
     public enum TransactionType {

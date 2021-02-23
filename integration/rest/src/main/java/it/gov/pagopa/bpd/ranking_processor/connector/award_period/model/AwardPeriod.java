@@ -21,5 +21,7 @@ public class AwardPeriod {
     private Integer gracePeriod;
     private Integer maxTransactionCashback;
     private String status;
+    private Long minPosition;
+    private Long maxPeriodCashback;
 
 }
