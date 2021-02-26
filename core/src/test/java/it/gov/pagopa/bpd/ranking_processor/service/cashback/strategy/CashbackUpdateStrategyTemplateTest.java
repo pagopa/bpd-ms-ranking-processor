@@ -1,16 +1,18 @@
-package it.gov.pagopa.bpd.ranking_processor.service.cashback;
+package it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.LoggingEvent;
 import ch.qos.logback.core.Appender;
 import eu.sia.meda.util.TestUtils;
+import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
+import it.gov.pagopa.bpd.ranking_processor.service.cashback.CashbackUpdateException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,12 +20,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.BDDMockito;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 
-import static it.gov.pagopa.bpd.ranking_processor.service.cashback.CashbackUpdateStrategyTemplate.ERROR_MESSAGE_TEMPLATE;
+import static it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy.CashbackUpdateStrategyTemplate.ERROR_MESSAGE_TEMPLATE;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -33,12 +36,36 @@ public abstract class CashbackUpdateStrategyTemplateTest {
 
     protected final WinningTransactionDao winningTransactionDaoMock;
     protected final CitizenRankingDao citizenRankingDaoMock;
+    protected final AggregatorStrategy aggregatorStrategy;
+    protected final BeanFactory beanFactoryMock;
 
     private final Appender mockedAppender;
     private final ArgumentCaptor<LoggingEvent> loggingEventCaptor;
 
     private Error error;
     private EnumSet<MissRecord> missRecords = EnumSet.noneOf(MissRecord.class);
+
+    public CashbackUpdateStrategyTemplateTest() {
+        this.winningTransactionDaoMock = Mockito.mock(WinningTransactionDao.class);
+        this.citizenRankingDaoMock = Mockito.mock(CitizenRankingDao.class);
+        this.aggregatorStrategy = Mockito.mock(AggregatorStrategy.class);
+        this.loggingEventCaptor = ArgumentCaptor.forClass(LoggingEvent.class);
+        this.mockedAppender = Mockito.mock(Appender.class);
+        beanFactoryMock = Mockito.mock(BeanFactory.class);
+        BDDMockito.doAnswer(invocationOnMock -> {
+            Class argument = invocationOnMock.getArgument(0, Class.class);
+            if (StandardAggregator.class.getName().equals(argument.getName()))
+                return aggregatorStrategy;
+            else if (PartialTransferAggregator.class.getName().equals(argument.getName()))
+                return aggregatorStrategy;
+            else
+                throw new IllegalArgumentException();
+        })
+                .when(beanFactoryMock)
+                .getBean(Mockito.any(Class.class));
+
+        initMocks();
+    }
 
     private void initMocks() {
         Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -47,17 +74,62 @@ public abstract class CashbackUpdateStrategyTemplateTest {
         ((Logger) LoggerFactory.getLogger("eu.sia")).setLevel(Level.DEBUG);
         ((Logger) LoggerFactory.getLogger("it.gov.pagopa.bpd")).setLevel(Level.DEBUG);
 
-        when(winningTransactionDaoMock.findTransactionToProcess(anyLong(), any(TransactionType.class), any(Pageable.class)))
+//        when(winningTransactionDaoMock.findTransactionToProcess(anyLong(), any(TransactionType.class), any(Pageable.class)))
+//                .thenAnswer(invocationOnMock -> {
+//                    TransactionType trxType = invocationOnMock.getArgument(1, TransactionType.class);
+//                    Pageable pageable = invocationOnMock.getArgument(2, Pageable.class);
+//                    List<WinningTransaction> transactions = new ArrayList<>(pageable.getPageSize());
+//                    for (int i = 0; i < pageable.getPageSize(); i++) {
+//                        transactions.add(TestUtils.mockInstance(WinningTransaction.builder()
+//                                .operationType(TransactionType.PAYMENT.equals(trxType) ? "00" : "01")
+//                                .build(), i, "setOperationType"));
+//                    }
+//                    return transactions;
+//                });
+        when(winningTransactionDaoMock.findPaymentToProcess(anyLong(), any(Pageable.class)))
                 .thenAnswer(invocationOnMock -> {
-                    TransactionType trxType = invocationOnMock.getArgument(1, TransactionType.class);
-                    Pageable pageable = invocationOnMock.getArgument(2, Pageable.class);
+                    Pageable pageable = invocationOnMock.getArgument(1, Pageable.class);
                     List<WinningTransaction> transactions = new ArrayList<>(pageable.getPageSize());
                     for (int i = 0; i < pageable.getPageSize(); i++) {
                         transactions.add(TestUtils.mockInstance(WinningTransaction.builder()
-                                .operationType(TransactionType.PAYMENT.equals(trxType) ? "00" : "01")
+                                .operationType("00")
                                 .build(), i, "setOperationType"));
                     }
                     return transactions;
+                });
+        when(winningTransactionDaoMock.findTotalTransferToProcess(anyLong(), any(Pageable.class)))
+                .thenAnswer(invocationOnMock -> {
+                    Pageable pageable = invocationOnMock.getArgument(1, Pageable.class);
+                    List<WinningTransaction> transactions = new ArrayList<>(pageable.getPageSize());
+                    for (int i = 0; i < pageable.getPageSize(); i++) {
+                        transactions.add(TestUtils.mockInstance(WinningTransaction.builder()
+                                .operationType("01")
+                                .build(), i, "setOperationType"));
+                    }
+                    return transactions;
+                });
+        when(winningTransactionDaoMock.findPartialTranferToProcess(anyLong(), any(Pageable.class)))
+                .thenAnswer(invocationOnMock -> {
+                    Pageable pageable = invocationOnMock.getArgument(1, Pageable.class);
+                    List<WinningTransaction> transactions = new ArrayList<>(pageable.getPageSize());
+                    for (int i = 0; i < pageable.getPageSize(); i++) {
+                        transactions.add(TestUtils.mockInstance(WinningTransaction.builder()
+                                .operationType("01")
+                                .build(), i, "setOperationType"));
+                    }
+                    return transactions;
+                });
+
+        when(aggregatorStrategy.aggregate(any(AwardPeriod.class), anyList()))
+                .thenAnswer(invocationOnMock -> {
+                    List<WinningTransaction> transactions = invocationOnMock.getArgument(1, List.class);
+                    List<CitizenRanking> rankings = new ArrayList<>(transactions.size());
+                    for (int i = 0; i < transactions.size(); i++) {
+                        rankings.add(TestUtils.mockInstance(CitizenRanking.builder()
+                                .fiscalCode(transactions.get(i).getFiscalCode())
+                                .build(), i, "setFiscalCode"));
+                    }
+                    return rankings;
                 });
 
         when(citizenRankingDaoMock.updateCashback(anyList()))
@@ -106,34 +178,28 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 });
     }
 
-    private static PageRequest toPageable(SimplePageRequest pageRequest) {
+    protected static PageRequest toPageable(SimplePageRequest pageRequest) {
         return PageRequest.of(pageRequest.getPage(), pageRequest.getSize());
-    }
-
-    public CashbackUpdateStrategyTemplateTest() {
-        this.winningTransactionDaoMock = Mockito.mock(WinningTransactionDao.class);
-        this.citizenRankingDaoMock = Mockito.mock(CitizenRankingDao.class);
-        this.loggingEventCaptor = ArgumentCaptor.forClass(LoggingEvent.class);
-        this.mockedAppender = Mockito.mock(Appender.class);
-
-        initMocks();
     }
 
     @Test
     public void process_OK() {
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
-        int processedTrxCount = getCashbackUpdateService().process(awardPeriodId, TransactionType.PAYMENT, pageRequest);
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(1L)
+                .build();
+        int processedTrxCount = getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
 
         Assert.assertSame(LIMIT, processedTrxCount);
-        BDDMockito.verify(winningTransactionDaoMock, times(1))
-                .findTransactionToProcess(eq(awardPeriodId), eq(TransactionType.PAYMENT), eq(toPageable(pageRequest)));
+        verifyTrxToProcess(pageRequest, awardPeriod);
         BDDMockito.verify(winningTransactionDaoMock, times(1))
                 .updateProcessedTransaction(anyCollection());
         BDDMockito.verify(citizenRankingDaoMock, times(1))
                 .updateCashback(anyList());
         verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
     }
+
+    protected abstract void verifyTrxToProcess(SimplePageRequest pageRequest, AwardPeriod awardPeriod);
 
     public abstract CashbackUpdateStrategy getCashbackUpdateService();
 
@@ -147,12 +213,13 @@ public abstract class CashbackUpdateStrategyTemplateTest {
     public void process_OK_updateCashbackMiss() {
         missRecords.add(MissRecord.UPDATE_CASHBACK);
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
-        int processedTrxCount = getCashbackUpdateService().process(awardPeriodId, TransactionType.PAYMENT, pageRequest);
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(1L)
+                .build();
+        int processedTrxCount = getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
 
         Assert.assertSame(LIMIT, processedTrxCount);
-        BDDMockito.verify(winningTransactionDaoMock, times(1))
-                .findTransactionToProcess(eq(awardPeriodId), eq(TransactionType.PAYMENT), eq(toPageable(pageRequest)));
+        verifyTrxToProcess(pageRequest, awardPeriod);
         BDDMockito.verify(citizenRankingDaoMock, times(1))
                 .updateCashback(anyList());
         BDDMockito.verify(citizenRankingDaoMock, times(1))
@@ -166,10 +233,12 @@ public abstract class CashbackUpdateStrategyTemplateTest {
     public void process_KO_updateCashbackError() {
         error = Error.UPDATE_CASHBACK;
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(1L)
+                .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriodId, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
@@ -182,8 +251,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                             LIMIT).equals(loggingEvent.getFormattedMessage()))
                     .findAny();
             Assert.assertTrue(errorEvent.isPresent());
-            BDDMockito.verify(winningTransactionDaoMock, times(1))
-                    .findTransactionToProcess(eq(awardPeriodId), eq(TransactionType.PAYMENT), eq(toPageable(pageRequest)));
+            verifyTrxToProcess(pageRequest, awardPeriod);
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateCashback(anyList());
             verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
@@ -197,10 +265,12 @@ public abstract class CashbackUpdateStrategyTemplateTest {
         missRecords.add(MissRecord.UPDATE_CASHBACK);
         error = Error.INSERT_CASHBACK;
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(1L)
+                .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriodId, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
@@ -213,8 +283,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                             1).equals(loggingEvent.getFormattedMessage()))
                     .findAny();
             Assert.assertTrue(errorEvent.isPresent());
-            BDDMockito.verify(winningTransactionDaoMock, times(1))
-                    .findTransactionToProcess(eq(awardPeriodId), eq(TransactionType.PAYMENT), eq(toPageable(pageRequest)));
+            verifyTrxToProcess(pageRequest, awardPeriod);
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateCashback(anyList());
             BDDMockito.verify(citizenRankingDaoMock, times(1))
@@ -230,10 +299,12 @@ public abstract class CashbackUpdateStrategyTemplateTest {
         missRecords.add(MissRecord.UPDATE_CASHBACK);
         missRecords.add(MissRecord.INSERT_CASHBACK);
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(1L)
+                .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriodId, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
@@ -246,8 +317,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                             1).equals(loggingEvent.getFormattedMessage()))
                     .findAny();
             Assert.assertTrue(errorEvent.isPresent());
-            BDDMockito.verify(winningTransactionDaoMock, times(1))
-                    .findTransactionToProcess(eq(awardPeriodId), eq(TransactionType.PAYMENT), eq(toPageable(pageRequest)));
+            verifyTrxToProcess(pageRequest, awardPeriod);
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateCashback(anyList());
             BDDMockito.verify(citizenRankingDaoMock, times(1))
@@ -262,10 +332,12 @@ public abstract class CashbackUpdateStrategyTemplateTest {
     public void process_KO_updateTransactionError() {
         error = Error.UPDATE_TRANSACTION;
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(1L)
+                .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriodId, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
@@ -278,8 +350,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                             LIMIT).equals(loggingEvent.getFormattedMessage()))
                     .findAny();
             Assert.assertTrue(errorEvent.isPresent());
-            BDDMockito.verify(winningTransactionDaoMock, times(1))
-                    .findTransactionToProcess(eq(awardPeriodId), eq(TransactionType.PAYMENT), eq(toPageable(pageRequest)));
+            verifyTrxToProcess(pageRequest, awardPeriod);
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateCashback(anyList());
             BDDMockito.verify(winningTransactionDaoMock, times(1))
@@ -294,10 +365,12 @@ public abstract class CashbackUpdateStrategyTemplateTest {
     public void process_KO_updateTransactionMissing() {
         missRecords.add(MissRecord.UPDATE_TRANSACTION);
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(1L)
+                .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriodId, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
@@ -310,8 +383,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                             LIMIT).equals(loggingEvent.getFormattedMessage()))
                     .findAny();
             Assert.assertTrue(errorEvent.isPresent());
-            BDDMockito.verify(winningTransactionDaoMock, times(1))
-                    .findTransactionToProcess(eq(awardPeriodId), eq(TransactionType.PAYMENT), eq(toPageable(pageRequest)));
+            verifyTrxToProcess(pageRequest, awardPeriod);
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateCashback(anyList());
             BDDMockito.verify(winningTransactionDaoMock, times(1))

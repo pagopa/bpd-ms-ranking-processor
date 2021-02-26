@@ -1,9 +1,11 @@
 package it.gov.pagopa.bpd.ranking_processor.service.cashback;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
-import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
+import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingSubProcessCommand;
+import it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy.CashbackUpdateStrategy;
+import it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy.CashbackUpdateStrategyFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,18 +46,18 @@ class UpdateCashbackCommandImpl implements RankingSubProcessCommand {
             log.debug("awardPeriodId = {}", awardPeriod);
         }
 
-        CashbackUpdateStrategy cashbackUpdateStrategy = getCashbackUpdateStrategy();
-        for (WinningTransaction.TransactionType trxType : WinningTransaction.TransactionType.values()) {
+        for (TransactionType trxType : TransactionType.values()) {
+            CashbackUpdateStrategy cashbackUpdateStrategy = getCashbackUpdateStrategy(trxType);
             int trxCount;
             do {
                 SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
-                trxCount = cashbackUpdateStrategy.process(awardPeriod.getAwardPeriodId(), trxType, pageRequest);
+                trxCount = cashbackUpdateStrategy.process(awardPeriod, trxType, pageRequest);
             } while (trxCount == cashbackUpdateLimit);
         }
     }
 
-    public CashbackUpdateStrategy getCashbackUpdateStrategy() {
-        return cashbackUpdateStrategyFactory.create();
+    public CashbackUpdateStrategy getCashbackUpdateStrategy(TransactionType trxType) {
+        return cashbackUpdateStrategyFactory.create(trxType);
     }
 
 }

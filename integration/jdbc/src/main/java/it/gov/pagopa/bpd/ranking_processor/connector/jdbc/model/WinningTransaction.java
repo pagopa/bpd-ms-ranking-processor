@@ -25,12 +25,14 @@ public class WinningTransaction implements Serializable {
     private String fiscalCode;
     private OffsetDateTime updateDate;
     private String updateUser;
+    private String correlationId;
+    private BigDecimal amountBalance;
 
 
     public enum TransactionType {
         PAYMENT,
-        TOTAL_TRANSFER
-//        PARTIAL_TRANSFER
+        TOTAL_TRANSFER,
+        PARTIAL_TRANSFER
     }
 
 }

@@ -23,5 +23,7 @@ public class AwardPeriod {
     private String status;
     private Long minPosition;
     private Long maxPeriodCashback;
+    private Long maxTransactionEvaluated;
+    private Integer cashbackPercentage;
 
 }
