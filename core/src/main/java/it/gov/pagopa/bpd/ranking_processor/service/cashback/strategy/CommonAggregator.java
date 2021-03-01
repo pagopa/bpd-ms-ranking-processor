@@ -6,6 +6,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransacti
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -17,12 +18,12 @@ import static it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy.Cash
 /**
  * Standard aggregator to handle payment and total transfer
  */
-class StandardAggregator implements AggregatorStrategy {
+class CommonAggregator implements AggregatorStrategy {
 
     private final ExecutionStrategy executionStrategy;
 
     @Autowired
-    public StandardAggregator(ExecutionStrategyFactory executionStrategyFactory) {
+    public CommonAggregator(ExecutionStrategyFactory executionStrategyFactory) {
         executionStrategy = executionStrategyFactory.create();
     }
 
@@ -37,7 +38,7 @@ class StandardAggregator implements AggregatorStrategy {
                 .map(trx -> CitizenRanking.builder()
                         .fiscalCode(trx.getFiscalCode())
                         .awardPeriodId(awardPeriod.getAwardPeriodId())
-                        .totalCashback(trx.getScore())
+                        .totalCashback(trx.getScore().setScale(2, RoundingMode.HALF_DOWN))
                         .transactionNumber("01".equals(trx.getOperationType()) ? -1L : 1L)
                         .updateDate(now)
                         .updateUser(RankingProcessorService.PROCESS_NAME)

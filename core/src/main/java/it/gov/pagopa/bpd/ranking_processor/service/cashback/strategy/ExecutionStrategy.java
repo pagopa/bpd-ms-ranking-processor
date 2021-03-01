@@ -2,9 +2,11 @@ package it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Spliterator;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collector;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -15,6 +17,8 @@ public interface ExecutionStrategy {
     <T, U> Map<T, U> unorderedMapSupplier();
 
     <T> Stream<T> streamSupplier(Collection<T> collection);
+
+    IntStream intStreamSupplier(Spliterator.OfInt ofInt);
 
     <T, K, U> Collector<T, ?, ? extends Map<K, U>> toMap(Function<? super T, ? extends K> keyMapper,
                                                          Function<? super T, ? extends U> valueMapper,

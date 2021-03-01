@@ -6,12 +6,10 @@ import org.springframework.stereotype.Service;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Spliterator;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import java.util.stream.*;
 
 /**
  * Serial implementation of {@link ExecutionStrategy}
@@ -28,6 +26,11 @@ class SerialExecutionStrategy implements ExecutionStrategy {
     @Override
     public <T> Stream<T> streamSupplier(Collection<T> collection) {
         return StreamSupport.stream(collection.spliterator(), false);
+    }
+
+    @Override
+    public IntStream intStreamSupplier(Spliterator.OfInt ofInt) {
+        return StreamSupport.intStream(ofInt, false);
     }
 
     @Override

@@ -92,7 +92,7 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
         return transactions.size();
     }
 
-    @Transactional
+
     protected abstract List<WinningTransaction> retrieveTransactions(long awardPeriodId, Pageable pageRequest);
 
 

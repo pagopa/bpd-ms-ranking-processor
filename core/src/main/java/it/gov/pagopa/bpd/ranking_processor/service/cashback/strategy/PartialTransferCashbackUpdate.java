@@ -22,7 +22,9 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
     public PartialTransferCashbackUpdate(WinningTransactionDao winningTransactionDao,
                                          CitizenRankingDao citizenRankingDao,
                                          BeanFactory beanFactory) {
-        super(winningTransactionDao, citizenRankingDao, beanFactory.getBean(PartialTransferAggregator.class));
+        super(winningTransactionDao,
+                citizenRankingDao,
+                beanFactory.getBean(CommonAggregator.class));
     }
 
 

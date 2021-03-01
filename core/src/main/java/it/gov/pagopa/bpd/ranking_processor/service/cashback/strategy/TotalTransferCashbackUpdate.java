@@ -22,7 +22,9 @@ class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
     public TotalTransferCashbackUpdate(WinningTransactionDao winningTransactionDao,
                                        CitizenRankingDao citizenRankingDao,
                                        BeanFactory beanFactory) {
-        super(winningTransactionDao, citizenRankingDao, beanFactory.getBean(StandardAggregator.class));
+        super(winningTransactionDao,
+                citizenRankingDao,
+                beanFactory.getBean(CommonAggregator.class));
     }
 
 

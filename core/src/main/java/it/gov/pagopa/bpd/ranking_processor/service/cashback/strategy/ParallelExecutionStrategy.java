@@ -5,13 +5,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Spliterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import java.util.stream.*;
 
 /**
  * Parallel implementation of {@link ExecutionStrategy}
@@ -28,6 +26,11 @@ class ParallelExecutionStrategy implements ExecutionStrategy {
     @Override
     public <T> Stream<T> streamSupplier(Collection<T> collection) {
         return StreamSupport.stream(collection.spliterator(), true);
+    }
+
+    @Override
+    public IntStream intStreamSupplier(Spliterator.OfInt ofInt) {
+        return StreamSupport.intStream(ofInt, false);
     }
 
     @Override

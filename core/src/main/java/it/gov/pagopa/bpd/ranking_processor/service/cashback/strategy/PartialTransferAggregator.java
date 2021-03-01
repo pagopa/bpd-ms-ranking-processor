@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -108,7 +109,7 @@ class PartialTransferAggregator implements AggregatorStrategy {
                             trx.getCorrelationId()));
                 } else if (newAmountBalance.compareTo(BigDecimal.ZERO) == 0) {
                     rankingBuilder
-                            .totalCashback(trx.getScore())
+                            .totalCashback(trx.getScore().setScale(2, RoundingMode.HALF_DOWN))
                             .transactionNumber(-1L);
                     rankingMap.merge(trx.getFiscalCode(), rankingBuilder.build(), CASHBACK_MAPPER);
                 } else if (newAmountBalance.compareTo(maxTrxEval) < 0) {
@@ -119,7 +120,7 @@ class PartialTransferAggregator implements AggregatorStrategy {
                                 .multiply(negativeCashbackMultiplier)
                                 .setScale(2, ROUND_HALF_DOWN));
                     } else {
-                        rankingBuilder.totalCashback(trx.getScore());
+                        rankingBuilder.totalCashback(trx.getScore().setScale(2, RoundingMode.HALF_DOWN));
                     }
                     rankingMap.merge(trx.getFiscalCode(), rankingBuilder.build(), CASHBACK_MAPPER);
                 }

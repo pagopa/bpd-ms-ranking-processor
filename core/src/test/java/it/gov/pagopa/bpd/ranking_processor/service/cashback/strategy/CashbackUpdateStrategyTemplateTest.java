@@ -54,7 +54,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
         beanFactoryMock = Mockito.mock(BeanFactory.class);
         BDDMockito.doAnswer(invocationOnMock -> {
             Class argument = invocationOnMock.getArgument(0, Class.class);
-            if (StandardAggregator.class.getName().equals(argument.getName()))
+            if (CommonAggregator.class.getName().equals(argument.getName()))
                 return aggregatorStrategy;
             else if (PartialTransferAggregator.class.getName().equals(argument.getName()))
                 return aggregatorStrategy;
