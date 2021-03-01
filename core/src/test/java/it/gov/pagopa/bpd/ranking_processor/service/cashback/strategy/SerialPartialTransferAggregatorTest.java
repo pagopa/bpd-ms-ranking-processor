@@ -34,7 +34,7 @@ public class SerialPartialTransferAggregatorTest extends PartialTransferAggregat
         BigDecimal updatedAmountBalance = originalAmountBalance;
         for (int i = 0; i < 4; i++) {
             BigDecimal amount = BigDecimal.valueOf(20);
-            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, bias);
+            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, "01", bias);
             winningTransactions.add(trx);
             updatedAmountBalance = updatedAmountBalance.subtract(trx.getAmount());
         }
@@ -45,7 +45,7 @@ public class SerialPartialTransferAggregatorTest extends PartialTransferAggregat
         updatedAmountBalance = originalAmountBalance;
         for (int i = 0; i < 4; i++) {
             BigDecimal amount = BigDecimal.valueOf(5);
-            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, bias);
+            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, "01", bias);
             winningTransactions.add(trx);
             updatedAmountBalance = updatedAmountBalance.subtract(trx.getAmount());
         }
@@ -56,7 +56,7 @@ public class SerialPartialTransferAggregatorTest extends PartialTransferAggregat
         updatedAmountBalance = originalAmountBalance;
         for (int i = 0; i < 4; i++) {
             BigDecimal amount = BigDecimal.valueOf(5);
-            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, bias);
+            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, "01", bias);
             winningTransactions.add(trx);
             updatedAmountBalance = updatedAmountBalance.subtract(trx.getAmount());
         }
@@ -88,7 +88,7 @@ public class SerialPartialTransferAggregatorTest extends PartialTransferAggregat
         BigDecimal updatedAmountBalance = originalAmountBalance;
         for (int i = 0; i < 10; i++) {
             BigDecimal amount = BigDecimal.valueOf(20);
-            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, bias);
+            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, "01", bias);
             winningTransactions.add(trx);
             updatedAmountBalance = updatedAmountBalance.subtract(trx.getAmount());
         }
@@ -99,7 +99,7 @@ public class SerialPartialTransferAggregatorTest extends PartialTransferAggregat
         updatedAmountBalance = originalAmountBalance;
         for (int i = 0; i < 20; i++) {
             BigDecimal amount = BigDecimal.valueOf(5);
-            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, bias);
+            WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, amount, "01", bias);
             winningTransactions.add(trx);
             updatedAmountBalance = updatedAmountBalance.subtract(trx.getAmount());
         }

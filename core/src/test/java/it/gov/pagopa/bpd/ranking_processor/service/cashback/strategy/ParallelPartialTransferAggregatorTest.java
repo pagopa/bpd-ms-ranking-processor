@@ -45,7 +45,7 @@ public class ParallelPartialTransferAggregatorTest extends PartialTransferAggreg
             } while (trxLoop == 0);
             trxLoop = Math.min(trxLoop, (int) origBal);
             for (int j = 0; j < trxLoop; j++) {
-                WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, BigDecimal.valueOf(1), i);
+                WinningTransaction trx = createTrx(maxCashbackPerTrx, originalAmountBalance, BigDecimal.valueOf(1), "01", i);
                 winningTransactions.add(trx);
                 updatedAmountBalance = updatedAmountBalance.subtract(trx.getAmount());
             }
