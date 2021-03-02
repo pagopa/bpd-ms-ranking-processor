@@ -11,10 +11,6 @@ import java.util.List;
  */
 public interface WinningTransactionDao {
 
-    List<WinningTransaction> findTransactionToProcess(Long awardPeriodId,
-                                                      WinningTransaction.TransactionType transactionType,
-                                                      Pageable pageable);
-
     List<WinningTransaction> findPaymentToProcess(Long awardPeriodId, Pageable pageable);
 
     List<WinningTransaction> findTotalTransferToProcess(Long awardPeriodId, Pageable pageable);

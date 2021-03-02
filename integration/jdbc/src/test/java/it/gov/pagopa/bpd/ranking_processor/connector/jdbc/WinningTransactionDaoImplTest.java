@@ -3,7 +3,6 @@ package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 import it.gov.pagopa.bpd.common.BaseTest;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
-import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -33,34 +32,75 @@ public class WinningTransactionDaoImplTest extends BaseTest {
 
 
     @Test
-    public void findTransactionToProcessOK_withPage() {
+    public void findPaymentToProcessOK_withPage() {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        for (TransactionType type : TransactionType.values()) {
-            List<WinningTransaction> transactions = winningWinningTransactionDao.findTransactionToProcess(1L,
-                    type,
-                    PageRequest.of(0, 1));
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findPaymentToProcess(1L,
+                PageRequest.of(0, 1));
 
-            Assert.assertNotNull(transactions);
-            Assert.assertEquals(0, transactions.size());
-        }
+        Assert.assertNotNull(transactions);
+        Assert.assertEquals(0, transactions.size());
     }
 
-
     @Test
-    public void findTransactionToProcessOK_withoutPage() {
+    public void findPaymentToProcessOK_withoutPage() {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        for (TransactionType type : TransactionType.values()) {
-            List<WinningTransaction> transactions = winningWinningTransactionDao.findTransactionToProcess(1L,
-                    type,
-                    null);
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findPaymentToProcess(1L,
+                null);
 
-            Assert.assertNotNull(transactions);
-            Assert.assertEquals(0, transactions.size());
-        }
+        Assert.assertNotNull(transactions);
+        Assert.assertEquals(0, transactions.size());
+    }
+
+    @Test
+    public void findTotalTransferToProcessOK_withPage() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findTotalTransferToProcess(1L,
+                PageRequest.of(0, 1));
+
+        Assert.assertNotNull(transactions);
+        Assert.assertEquals(0, transactions.size());
+    }
+
+    @Test
+    public void findTotalTransferToProcessOK_withoutPage() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findTotalTransferToProcess(1L,
+                null);
+
+        Assert.assertNotNull(transactions);
+        Assert.assertEquals(0, transactions.size());
+    }
+
+    @Test
+    public void findPartialTranferToProcessOK_withPage() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findPartialTranferToProcess(1L,
+                PageRequest.of(0, 1));
+
+        Assert.assertNotNull(transactions);
+        Assert.assertEquals(0, transactions.size());
+    }
+
+    @Test
+    public void findPartialTranferToProcessOK_withoutPage() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findPartialTranferToProcess(1L,
+                null);
+
+        Assert.assertNotNull(transactions);
+        Assert.assertEquals(0, transactions.size());
     }
 
 

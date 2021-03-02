@@ -1,7 +1,6 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
-import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,42 +71,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
                 elabRankingName);
     }
 
-    @Override
-    @Deprecated //TODO: remove me
-    public List<WinningTransaction> findTransactionToProcess(Long awardPeriodId,
-                                                             TransactionType transactionType,
-                                                             Pageable pageable) {
-        if (log.isTraceEnabled()) {
-            log.trace("WinningTransactionDaoImpl.findTransactionToProcess");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, transactionType = {}, pageable = {}", awardPeriodId, transactionType, pageable);
-        }
-
-        StringBuilder sql = new StringBuilder();
-        switch (transactionType) {
-            case PAYMENT:
-                sql.append(findPaymentTrxToProcessQuery);
-                break;
-            case TOTAL_TRANSFER:
-                sql.append(findTotalTransferTrxToProcessQuery);
-                break;
-//            case PARTIAL_TRANSFER://TODO
-//                sql.append(findPartialTransferTrxToProcessQuery);
-//                break;
-            default:
-                throw new IllegalArgumentException(String.format("Transaction Type \"%s\" not allowed", transactionType));
-        }
-
-        managePagination(sql, pageable);
-        manageLocking(sql);
-
-        log.info(sql.toString());
-
-        return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
-                preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
-                paymentTrxResultSetExtractor);
-    }
 
     private void managePagination(StringBuilder sql, Pageable pageable) {
         if (pageable != null) {
@@ -135,8 +98,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
         managePagination(sql, pageable);
         manageLocking(sql);
 
-        log.info(sql.toString());
-
         return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
                 preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
                 paymentTrxResultSetExtractor);
@@ -156,8 +117,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
         managePagination(sql, pageable);
         manageLocking(sql);
 
-        log.info(sql.toString());
-
         return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
                 preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
                 totalTransferTrxResultSetExtractor);
@@ -175,8 +134,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
 
         StringBuilder sql = new StringBuilder(findPartialTransferTrxToProcessQuery);
         managePagination(sql, pageable);
-
-        log.info(sql.toString());
 
         return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
                 preparedStatement -> preparedStatement.setLong(1, awardPeriodId),

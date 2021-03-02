@@ -49,6 +49,7 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
             throw new IllegalArgumentException("awardPeriodId can not be null");
         }
 
+        //FIXME
         AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);
 //        AwardPeriod awardPeriod = AwardPeriod.builder()
 //                .awardPeriodId(awardPeriodId)
