@@ -93,7 +93,7 @@ class PartialTransferAggregator implements AggregatorStrategy {
         executionStrategy.streamSupplier(transactions).forEach(trx -> {
             trx.setUpdateDate(now);
             trx.setUpdateUser(RankingProcessorService.PROCESS_NAME);
-            amountBalanceMap.compute(trx.getCorrelationId(), (key, oldValue) -> {
+            amountBalanceMap.compute(trx.getUniqueCorrelationKey(), (key, oldValue) -> {
                 BigDecimal oldAmountBalance = oldValue == null ? trx.getAmountBalance() : oldValue;
                 BigDecimal newAmountBalance = oldAmountBalance.subtract(trx.getAmount());
                 CitizenRanking.CitizenRankingBuilder rankingBuilder = CitizenRanking.builder()

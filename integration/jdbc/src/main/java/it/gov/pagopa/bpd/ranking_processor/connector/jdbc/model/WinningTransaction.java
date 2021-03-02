@@ -35,5 +35,9 @@ public class WinningTransaction implements Serializable {
         PARTIAL_TRANSFER
     }
 
+    public String getUniqueCorrelationKey() {
+        return correlationId + idTrxAcquirer + acquirerCode + acquirerId;
+    }
+
 }
 

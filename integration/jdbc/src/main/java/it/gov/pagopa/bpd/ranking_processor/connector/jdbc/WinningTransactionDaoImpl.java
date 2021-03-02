@@ -67,7 +67,7 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
         updateProcessedTrxSql = String.format("update %sbpd_winning_transaction set %s = true, update_date_t = :updateDate, update_user_s = :updateUser where id_trx_acquirer_s = :idTrxAcquirer and acquirer_c = :acquirerCode and trx_timestamp_t = :trxDate and operation_type_c = :operationType and acquirer_id_s = :acquirerId",
                 schema,
                 elabRankingName);
-        findPartialTransferTrxToProcessQuery = String.format("select payment.amount_i - sum(partial_transfer_elabled.amount_i) as amount_saldo, partial_transfer_to_elab.id_trx_acquirer_s, partial_transfer_to_elab.trx_timestamp_t, partial_transfer_to_elab.acquirer_c, partial_transfer_to_elab.acquirer_id_s, partial_transfer_to_elab.operation_type_c, partial_transfer_to_elab.score_n, partial_transfer_to_elab.amount_i, partial_transfer_to_elab.fiscal_code_s, partial_transfer_to_elab.correlation_id_s from bpd_winning_transaction.bpd_winning_transaction partial_transfer_to_elab inner join bpd_winning_transaction.bpd_winning_transaction payment on payment.enabled_b is true and payment.%s is true and payment.operation_type_c != partial_transfer_to_elab.operation_type_c and payment.award_period_id_n = partial_transfer_to_elab.award_period_id_n and payment.hpan_s = partial_transfer_to_elab.hpan_s and payment.acquirer_c = partial_transfer_to_elab.acquirer_c and payment.acquirer_id_s = partial_transfer_to_elab.acquirer_id_s and payment.amount_i != partial_transfer_to_elab.amount_i and payment.correlation_id_s = partial_transfer_to_elab.correlation_id_s inner join bpd_winning_transaction.bpd_winning_transaction partial_transfer_elabled on partial_transfer_elabled.enabled_b is true and partial_transfer_elabled.%s is true and partial_transfer_elabled.operation_type_c = partial_transfer_to_elab.operation_type_c and partial_transfer_elabled.award_period_id_n = partial_transfer_to_elab.award_period_id_n and partial_transfer_elabled.hpan_s = partial_transfer_to_elab.hpan_s and partial_transfer_elabled.acquirer_c = partial_transfer_to_elab.acquirer_c and partial_transfer_elabled.acquirer_id_s = partial_transfer_to_elab.acquirer_id_s and partial_transfer_elabled.correlation_id_s = partial_transfer_to_elab.correlation_id_s where partial_transfer_to_elab.enabled_b is true and partial_transfer_to_elab.%s is not true and partial_transfer_to_elab.award_period_id_n = ? and partial_transfer_to_elab.operation_type_c = '01' and nullif(partial_transfer_to_elab.correlation_id_s, '') is not null and partial_transfer_to_elab.fiscal_code_s is not null group by partial_transfer_to_elab.id_trx_acquirer_s,  partial_transfer_to_elab.trx_timestamp_t,  partial_transfer_to_elab.acquirer_c,  partial_transfer_to_elab.acquirer_id_s,  partial_transfer_to_elab.operation_type_c, partial_transfer_to_elab.amount_i, partial_transfer_to_elab.fiscal_code_s, payment.amount_i",
+        findPartialTransferTrxToProcessQuery = String.format("select payment.amount_i - coalesce(sum(partial_transfer_elabled.amount_i), 0) as amount_balance, partial_transfer_to_elab.id_trx_acquirer_s, partial_transfer_to_elab.trx_timestamp_t, partial_transfer_to_elab.acquirer_c, partial_transfer_to_elab.acquirer_id_s, partial_transfer_to_elab.operation_type_c, partial_transfer_to_elab.score_n, partial_transfer_to_elab.amount_i, partial_transfer_to_elab.fiscal_code_s, partial_transfer_to_elab.correlation_id_s from bpd_winning_transaction.bpd_winning_transaction partial_transfer_to_elab inner join bpd_winning_transaction.bpd_winning_transaction payment on payment.enabled_b is true and payment.%s is true and payment.operation_type_c != partial_transfer_to_elab.operation_type_c and payment.award_period_id_n = partial_transfer_to_elab.award_period_id_n and payment.hpan_s = partial_transfer_to_elab.hpan_s and payment.acquirer_c = partial_transfer_to_elab.acquirer_c and payment.acquirer_id_s = partial_transfer_to_elab.acquirer_id_s and payment.amount_i != partial_transfer_to_elab.amount_i and payment.correlation_id_s = partial_transfer_to_elab.correlation_id_s left outer join bpd_winning_transaction.bpd_winning_transaction partial_transfer_elabled on partial_transfer_elabled.enabled_b is true and partial_transfer_elabled.%s is true and partial_transfer_elabled.operation_type_c = partial_transfer_to_elab.operation_type_c and partial_transfer_elabled.award_period_id_n = partial_transfer_to_elab.award_period_id_n and partial_transfer_elabled.hpan_s = partial_transfer_to_elab.hpan_s and partial_transfer_elabled.acquirer_c = partial_transfer_to_elab.acquirer_c and partial_transfer_elabled.acquirer_id_s = partial_transfer_to_elab.acquirer_id_s and partial_transfer_elabled.correlation_id_s = partial_transfer_to_elab.correlation_id_s where partial_transfer_to_elab.enabled_b is true and partial_transfer_to_elab.%s is not true and partial_transfer_to_elab.award_period_id_n = ? and partial_transfer_to_elab.operation_type_c = '01' and nullif(partial_transfer_to_elab.correlation_id_s, '') is not null and partial_transfer_to_elab.fiscal_code_s is not null group by partial_transfer_to_elab.id_trx_acquirer_s,  partial_transfer_to_elab.trx_timestamp_t,  partial_transfer_to_elab.acquirer_c,  partial_transfer_to_elab.acquirer_id_s,  partial_transfer_to_elab.operation_type_c, partial_transfer_to_elab.amount_i, partial_transfer_to_elab.fiscal_code_s, payment.amount_i",
                 elabRankingName,
                 elabRankingName,
                 elabRankingName);
@@ -75,7 +75,7 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
 
     @Override
     @Transactional
-    @Deprecated
+    @Deprecated //TODO: remove me
     public List<WinningTransaction> findTransactionToProcess(Long awardPeriodId,
                                                              TransactionType transactionType,
                                                              Pageable pageable) {
@@ -221,8 +221,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
                     .fiscalCode(rs.getString("fiscal_code_s"))
                     .amount(rs.getBigDecimal("amount_i"))
                     .score(rs.getBigDecimal("score_n"))
-                    .amountBalance(rs.getBigDecimal("balance_i"))
-                    .correlationId(rs.getString("correlation_id_s"))
                     .build();
         }
     }
@@ -238,7 +236,8 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
                 log.trace("ExtWinningTransactionMapper.mapRow");
             }
 
-            winningTransaction.setAmountBalance(rs.getBigDecimal("balance_i"));
+            winningTransaction.setAmountBalance(rs.getBigDecimal("amount_balance"));
+            winningTransaction.setCorrelationId(rs.getString("correlation_id_s"));
             return winningTransaction;
         }
     }

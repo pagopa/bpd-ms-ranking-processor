@@ -4,7 +4,9 @@ import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPer
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
@@ -18,6 +20,8 @@ import static it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy.Cash
 /**
  * Standard aggregator to handle payment and total transfer
  */
+@Slf4j
+@Service
 class CommonAggregator implements AggregatorStrategy {
 
     private final ExecutionStrategy executionStrategy;
