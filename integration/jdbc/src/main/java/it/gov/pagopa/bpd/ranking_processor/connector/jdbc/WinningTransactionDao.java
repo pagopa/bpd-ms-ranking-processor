@@ -2,7 +2,6 @@ package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import org.springframework.data.domain.Pageable;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -10,7 +9,6 @@ import java.util.List;
 /**
  * Data Access Object to manage the operations to the database related to {@link WinningTransaction} model
  */
-@Transactional
 public interface WinningTransactionDao {
 
     List<WinningTransaction> findTransactionToProcess(Long awardPeriodId,

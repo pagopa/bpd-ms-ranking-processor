@@ -36,7 +36,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
     private Set<CitizenRanking> lastTies = Collections.emptySet();
 
     @Override
-    @Transactional
+    @Transactional("citizenTransactionManager")
     public int process(long awardPeriodId, SimplePageRequest simplePageRequest) {
         if (log.isTraceEnabled()) {
             log.trace("RankingUpdateStrategyTemplate.process");

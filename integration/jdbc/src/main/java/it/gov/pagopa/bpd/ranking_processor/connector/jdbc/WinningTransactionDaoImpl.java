@@ -15,7 +15,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -74,7 +73,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     }
 
     @Override
-    @Transactional
     @Deprecated //TODO: remove me
     public List<WinningTransaction> findTransactionToProcess(Long awardPeriodId,
                                                              TransactionType transactionType,
@@ -125,7 +123,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     }
 
     @Override
-    @Transactional
     public List<WinningTransaction> findPaymentToProcess(Long awardPeriodId, Pageable pageable) {
         if (log.isTraceEnabled()) {
             log.trace("WinningTransactionDaoImpl.findPaymentToProcess");
@@ -147,7 +144,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
 
 
     @Override
-    @Transactional
     public List<WinningTransaction> findTotalTransferToProcess(Long awardPeriodId, Pageable pageable) {
         if (log.isTraceEnabled()) {
             log.trace("WinningTransactionDaoImpl.findTotalTransferToProcess");
@@ -169,7 +165,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
 
 
     @Override
-    @Transactional
     public List<WinningTransaction> findPartialTranferToProcess(Long awardPeriodId, Pageable pageable) {//FIXME
         if (log.isTraceEnabled()) {
             log.trace("WinningTransactionDaoImpl.findPartialTranferToProcess");
@@ -190,7 +185,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
 
 
     @Override
-    @Transactional
     public int[] updateProcessedTransaction(final Collection<WinningTransaction> winningTransactionIds) {
         if (log.isTraceEnabled()) {
             log.trace("WinningTransactionDaoImpl.updateProcessedTransaction");

@@ -4,7 +4,6 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRankingExt;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -12,7 +11,6 @@ import java.util.List;
 /**
  * Data Access Object to manage the operations to the database related to {@link CitizenRanking} model
  */
-@Transactional
 public interface CitizenRankingDao {
 
     /**

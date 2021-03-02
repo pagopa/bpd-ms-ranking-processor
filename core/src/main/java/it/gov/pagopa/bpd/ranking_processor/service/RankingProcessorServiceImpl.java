@@ -49,14 +49,14 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
             throw new IllegalArgumentException("awardPeriodId can not be null");
         }
 
-//        AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);//FIXME
-        AwardPeriod awardPeriod = AwardPeriod.builder()
-                .awardPeriodId(awardPeriodId)
-                .minPosition(1000L)
-                .maxPeriodCashback(150L)
-                .maxTransactionEvaluated(150L)
-                .cashbackPercentage(10)
-                .build();
+        AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);
+//        AwardPeriod awardPeriod = AwardPeriod.builder()
+//                .awardPeriodId(awardPeriodId)
+//                .minPosition(1000L)
+//                .maxPeriodCashback(150L)
+//                .maxTransactionEvaluated(150L)
+//                .cashbackPercentage(10)
+//                .build();
         process(awardPeriod);
     }
 

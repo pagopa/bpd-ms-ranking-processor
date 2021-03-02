@@ -46,7 +46,7 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
     }
 
     @Override
-    @Transactional
+    @Transactional("chainedTransactionManager")
     public int process(AwardPeriod awardPeriod, TransactionType transactionType, SimplePageRequest simplePageRequest) {
         if (log.isTraceEnabled()) {
             log.trace("CashbackUpdateStrategyTemplate.process");

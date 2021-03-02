@@ -1,9 +1,13 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc.config;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.*;
+import org.springframework.data.transaction.ChainedTransactionManager;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 
@@ -49,6 +53,27 @@ class JdbcConfig {
     @ConfigurationProperties("winning-transaction.spring.datasource")
     public DataSourceProperties winningTransactionDataSourceProperties() {
         return new DataSourceProperties();
+    }
+
+    @Bean("winningTransactionTransactionManager")
+    public PlatformTransactionManager winningTransactionTransactionManager(@Qualifier("winningTransactionDataSource")
+                                                                                   DataSource winningTransactionDataSource) {
+        return new DataSourceTransactionManager(winningTransactionDataSource);
+    }
+
+    @Bean("citizenTransactionManager")
+    public PlatformTransactionManager citizenTransactionManager(@Qualifier("citizenDataSource")
+                                                                        DataSource citizenDataSource) {
+        return new DataSourceTransactionManager(citizenDataSource);
+    }
+
+
+    @Bean("chainedTransactionManager")
+    public ChainedTransactionManager transactionManager(@Qualifier("winningTransactionTransactionManager")
+                                                                PlatformTransactionManager winningTransactionTransactionManager,
+                                                        @Qualifier("citizenTransactionManager")
+                                                                PlatformTransactionManager citizenTransactionManager) {
+        return new ChainedTransactionManager(winningTransactionTransactionManager, citizenTransactionManager);
     }
 
 
