@@ -41,10 +41,10 @@ class RankingUpdateStrategyFactoryImpl implements RankingUpdateStrategyFactory {
         RankingUpdateStrategy bean;
 
         if (parallelEnabled) {
-            bean = beanFactory.getBean(ParallelRankingUpdateImpl.class);
+            bean = beanFactory.getBean(ParallelRankingUpdate.class);
 
         } else {
-            bean = beanFactory.getBean(SerialRankingUpdateImpl.class);
+            bean = beanFactory.getBean(SerialRankingUpdate.class);
         }
 
         return bean;

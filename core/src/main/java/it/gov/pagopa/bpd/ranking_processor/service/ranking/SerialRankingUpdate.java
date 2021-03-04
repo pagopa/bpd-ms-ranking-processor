@@ -11,25 +11,22 @@ import org.springframework.stereotype.Component;
 
 import java.time.OffsetDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
- * Parallel implementation of {@link RankingUpdateStrategyTemplate}
+ * Serial implementation of {@link RankingUpdateStrategyTemplate}
  */
 @Slf4j
 @Component
 @Scope(BeanDefinition.SCOPE_PROTOTYPE)
-public class ParallelRankingUpdateImpl extends RankingUpdateStrategyTemplate {
-
+public class SerialRankingUpdate extends RankingUpdateStrategyTemplate {
 
     @Autowired
-    public ParallelRankingUpdateImpl(CitizenRankingDao citizenRankingDao) {
+    public SerialRankingUpdate(CitizenRankingDao citizenRankingDao) {
         super(citizenRankingDao);
 
         if (log.isTraceEnabled()) {
-            log.trace("ParallelRankingUpdateImpl.ParallelRankingUpdateImpl");
+            log.trace("SerialRankingUpdate.SerialRankingUpdate");
         }
         if (log.isDebugEnabled()) {
             log.debug("citizenRankingDao = {}", citizenRankingDao);
@@ -40,7 +37,7 @@ public class ParallelRankingUpdateImpl extends RankingUpdateStrategyTemplate {
     @Override
     protected void setRanking(Map<Long, Set<CitizenRanking>> tiedMap) {
         if (log.isTraceEnabled()) {
-            log.trace("ParallelRankingUpdateImpl.setRanking");
+            log.trace("SerialRankingUpdate.setRanking");
         }
         if (log.isDebugEnabled()) {
             log.debug("tiedMap = {}", tiedMap);
@@ -49,17 +46,11 @@ public class ParallelRankingUpdateImpl extends RankingUpdateStrategyTemplate {
         OffsetDateTime now = OffsetDateTime.now();
         for (Set<CitizenRanking> ties : tiedMap.values()) {
 
-            int startRankingChunk = lastAssignedRanking.getValue() + 1;
-            CitizenRanking[] tiesArray = ties.toArray(new CitizenRanking[ties.size()]);
-            IntStream.range(startRankingChunk, startRankingChunk + tiesArray.length)
-                    .parallel()
-                    .forEach(i -> {
-                        CitizenRanking citizenRanking = tiesArray[i - startRankingChunk];
-                        citizenRanking.setRanking((long) i);
-                        citizenRanking.setUpdateDate(now);
-                        citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
-                    });
-            lastAssignedRanking.add(tiesArray.length);
+            for (CitizenRanking citizenRanking : ties) {
+                citizenRanking.setRanking((long) lastAssignedRanking.incrementAndGet());
+                citizenRanking.setUpdateDate(now);
+                citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
+            }
         }
     }
 
@@ -67,16 +58,15 @@ public class ParallelRankingUpdateImpl extends RankingUpdateStrategyTemplate {
     @Override
     protected NavigableMap<Long, Set<CitizenRanking>> aggregateData(List<CitizenRanking> citizenRankings) {
         if (log.isTraceEnabled()) {
-            log.trace("ParallelRankingUpdateImpl.aggregateData");
+            log.trace("SerialRankingUpdate.aggregateData");
         }
         if (log.isDebugEnabled()) {
             log.debug("citizenRankings = {}", citizenRankings);
         }
 
         return citizenRankings.stream()
-                .parallel()
-                .collect(Collectors.groupingByConcurrent(CitizenRanking::getTransactionNumber,
-                        () -> new ConcurrentSkipListMap<>(Comparator.reverseOrder()),
+                .collect(Collectors.groupingBy(CitizenRanking::getTransactionNumber,
+                        () -> new TreeMap<>(Comparator.reverseOrder()),
                         Collectors.toCollection(() -> new TreeSet<>(TIE_BREAK))));
     }
 

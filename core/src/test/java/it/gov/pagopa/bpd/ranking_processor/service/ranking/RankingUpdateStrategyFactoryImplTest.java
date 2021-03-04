@@ -25,10 +25,10 @@ public class RankingUpdateStrategyFactoryImplTest {
     private void initMocks() {
         BDDMockito.doAnswer(invocationOnMock -> {
             Class argument = invocationOnMock.getArgument(0, Class.class);
-            if (ParallelRankingUpdateImpl.class.getName().equals(argument.getName()))
-                return new ParallelRankingUpdateImpl(null);
-            else if (SerialRankingUpdateImpl.class.getName().equals(argument.getName()))
-                return new SerialRankingUpdateImpl(null);
+            if (ParallelRankingUpdate.class.getName().equals(argument.getName()))
+                return new ParallelRankingUpdate(null);
+            else if (SerialRankingUpdate.class.getName().equals(argument.getName()))
+                return new SerialRankingUpdate(null);
             else
                 throw new IllegalArgumentException();
         })
@@ -41,14 +41,14 @@ public class RankingUpdateStrategyFactoryImplTest {
     public void create_OK_serial() {
         RankingUpdateStrategy serialRankingUpdateStrategy = serialRankingUpdateFactory.create();
         Assert.assertNotNull(serialRankingUpdateStrategy);
-        Assert.assertTrue(SerialRankingUpdateImpl.class.isAssignableFrom(serialRankingUpdateStrategy.getClass()));
+        Assert.assertTrue(SerialRankingUpdate.class.isAssignableFrom(serialRankingUpdateStrategy.getClass()));
     }
 
     @Test
     public void create_OK_parallel() {
         RankingUpdateStrategy parallelRankingUpdateStrategy = parallelRankingUpdateFactory.create();
         Assert.assertNotNull(parallelRankingUpdateStrategy);
-        Assert.assertTrue(ParallelRankingUpdateImpl.class.isAssignableFrom(parallelRankingUpdateStrategy.getClass()));
+        Assert.assertTrue(ParallelRankingUpdate.class.isAssignableFrom(parallelRankingUpdateStrategy.getClass()));
     }
 
 }

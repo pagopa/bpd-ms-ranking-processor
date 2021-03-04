@@ -4,6 +4,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPer
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRankingExt;
+import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.util.DaoHelper;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +13,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Statement;
 import java.time.OffsetDateTime;
 import java.util.*;
 
@@ -106,7 +106,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
         } else {
             long failedUpdateCount = Arrays.stream(affectedRows)
-                    .filter(this::isStatementResultKO)
+                    .filter(DaoHelper.isStatementResultKO)
                     .count();
 
             if (failedUpdateCount > 0) {
@@ -115,10 +115,6 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
                 throw new RankingUpdateException(message);
             }
         }
-    }
-
-    private boolean isStatementResultKO(int value) {
-        return value != 1 && value != Statement.SUCCESS_NO_INFO;
     }
 
 
@@ -148,14 +144,14 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
         int result = citizenRankingDao.updateRankingExt(rankingExt);
 
-        if (isStatementResultKO(result)) {
+        if (DaoHelper.isStatementResultKO.test(result)) {
             rankingExt.setInsertDate(rankingExt.getUpdateDate());
             rankingExt.setInsertUser(rankingExt.getUpdateUser());
             rankingExt.setUpdateDate(null);
             rankingExt.setUpdateUser(null);
             result = citizenRankingDao.insertRankingExt(rankingExt);
 
-            if (isStatementResultKO(result)) {
+            if (DaoHelper.isStatementResultKO.test(result)) {
                 throw new RankingUpdateException("failed to update citizen_ranking_ext");
             }
         }

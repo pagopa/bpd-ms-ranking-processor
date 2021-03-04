@@ -13,6 +13,8 @@ import java.util.List;
  */
 public interface CitizenRankingDao {
 
+    int updateRedis();
+
     /**
      * Sort to retrieve citizens sorted by their ranking
      */
@@ -29,4 +31,20 @@ public interface CitizenRankingDao {
     int updateRankingExt(CitizenRankingExt rankingExt);
 
     int insertRankingExt(CitizenRankingExt rankingExt);
+
+    default int registerWorker(CitizenRankingDaoImpl.RankingProcess process) {
+        return registerWorker(process, false);
+    }
+
+    int registerWorker(RankingProcess process, boolean lock);
+
+    int unregisterWorker(CitizenRankingDaoImpl.RankingProcess process);
+
+    int getWorkerCount(RankingProcess process);
+
+    enum RankingProcess {
+        UPDATE_CASHBACK,
+        UPDATE_RANKING,
+        UPDATE_REDIS;
+    }
 }

@@ -74,18 +74,6 @@ public abstract class CashbackUpdateStrategyTemplateTest {
         ((Logger) LoggerFactory.getLogger("eu.sia")).setLevel(Level.DEBUG);
         ((Logger) LoggerFactory.getLogger("it.gov.pagopa.bpd")).setLevel(Level.DEBUG);
 
-//        when(winningTransactionDaoMock.findTransactionToProcess(anyLong(), any(TransactionType.class), any(Pageable.class)))
-//                .thenAnswer(invocationOnMock -> {
-//                    TransactionType trxType = invocationOnMock.getArgument(1, TransactionType.class);
-//                    Pageable pageable = invocationOnMock.getArgument(2, Pageable.class);
-//                    List<WinningTransaction> transactions = new ArrayList<>(pageable.getPageSize());
-//                    for (int i = 0; i < pageable.getPageSize(); i++) {
-//                        transactions.add(TestUtils.mockInstance(WinningTransaction.builder()
-//                                .operationType(TransactionType.PAYMENT.equals(trxType) ? "00" : "01")
-//                                .build(), i, "setOperationType"));
-//                    }
-//                    return transactions;
-//                });
         when(winningTransactionDaoMock.findPaymentToProcess(anyLong(), any(Pageable.class)))
                 .thenAnswer(invocationOnMock -> {
                     Pageable pageable = invocationOnMock.getArgument(1, Pageable.class);

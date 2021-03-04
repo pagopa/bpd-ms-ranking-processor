@@ -1,11 +1,11 @@
 package it.gov.pagopa.bpd.ranking_processor.service.ranking;
 
-public class SerialRankingUpdateImplTest extends RankingUpdateStrategyTemplateTest {
+public class SerialRankingUpdateTest extends RankingUpdateStrategyTemplateTest {
 
     private final RankingUpdateStrategy rankingUpdateStrategy;
 
-    public SerialRankingUpdateImplTest() {
-        this.rankingUpdateStrategy = new SerialRankingUpdateImpl(citizenRankingDaoMock);
+    public SerialRankingUpdateTest() {
+        this.rankingUpdateStrategy = new SerialRankingUpdate(citizenRankingDaoMock);
     }
 
     @Override

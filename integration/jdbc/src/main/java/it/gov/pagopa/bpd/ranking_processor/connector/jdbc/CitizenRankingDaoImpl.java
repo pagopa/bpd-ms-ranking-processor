@@ -2,6 +2,8 @@ package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRankingExt;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,10 +32,14 @@ import java.util.List;
 @Slf4j
 class CitizenRankingDaoImpl implements CitizenRankingDao {
 
-    public final String findAllOrderedByTrxNumSql;
+    private static final String UPDATE_REDIS_SQL = "UPDATE redis_cache_config SET update_ranking=true, update_ranking_from=CURRENT_TIMESTAMP";
+    private static final String UPDATE_RANKING_PROCESSOR_LOCK_SQL = "update bpd_citizen.bpd_ranking_processor_lock set worker_count = worker_count + :value, status = case when (worker_count + :value) = 0 then 'IDLE' else 'IN_PROGRESS' end, update_user = :updateUser, update_date = CURRENT_TIMESTAMP where process_id = :processId";
+    private static final String GET_WORKER_COUNT_SQL = "select worker_count from bpd_ranking_processor_lock where process_id = ?";
+
     private final String updateCashbackSql;
     private final String updateRankingSql;
     private final String updateRankingExtSql;
+    private final String findAllOrderedByTrxNumSql;
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final RowMapperResultSetExtractor<CitizenRanking> findallResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
@@ -105,28 +111,13 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         return insertRankingOps.executeBatch(batchValues);
     }
 
-
     @Override
-    public List<CitizenRanking> findAll(long awardPeriodId, Pageable pageable) {
+    public int updateRedis() {
         if (log.isTraceEnabled()) {
-            log.trace("CitizenRankingDaoImpl.findAll");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
+            log.trace("CitizenRankingDaoImpl.updateRedis");
         }
 
-        StringBuilder clauses = new StringBuilder();
-        if (pageable != null) {
-            if (!pageable.getSort().isEmpty()) {
-                clauses.append(" ORDER BY ").append(pageable.getSort().toString().replace(":", ""));
-            }
-            if (pageable.isPaged()) {
-                clauses.append(" LIMIT ").append(pageable.getPageSize())
-                        .append(" OFFSET ").append(pageable.getOffset());
-            }
-        }
-
-        return findAll(awardPeriodId, clauses.toString());
+        return jdbcTemplate.update(UPDATE_REDIS_SQL);
     }
 
     @Override
@@ -236,17 +227,66 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         return param;
     }
 
-    private List<CitizenRanking> findAll(Long awardPeriodId, String clauses) {
+    @Override
+    public List<CitizenRanking> findAll(long awardPeriodId, Pageable pageable) {
         if (log.isTraceEnabled()) {
             log.trace("CitizenRankingDaoImpl.findAll");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, clauses = {}", awardPeriodId, clauses);
+            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
+        }
+
+        StringBuilder clauses = new StringBuilder();
+        if (pageable != null) {
+            if (!pageable.getSort().isEmpty()) {
+                clauses.append(" ORDER BY ").append(pageable.getSort().toString().replace(":", ""));
+            }
+            if (pageable.isPaged()) {
+                clauses.append(" LIMIT ").append(pageable.getPageSize())
+                        .append(" OFFSET ").append(pageable.getOffset());
+            }
         }
 
         return jdbcTemplate.query(connection -> connection.prepareStatement(findAllOrderedByTrxNumSql + clauses),
                 preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
                 findallResultSetExtractor);
+    }
+
+    @Override
+    public int registerWorker(RankingProcess process, boolean exclusiveLock) {
+        return updateWorker(process, 1, exclusiveLock);
+    }
+
+    private int updateWorker(RankingProcess process, int value, boolean exclusiveLock) {
+        String updateUser = System.getenv("HOSTNAME");
+        if (updateUser == null) {
+            updateUser = System.getenv("COMPUTERNAME");
+        }
+        UpdateWorkerDto updateWorkerDto = new UpdateWorkerDto(process.name(), value, updateUser);
+        BeanPropertySqlParameterSource sqlParameterSource = new BeanPropertySqlParameterSource(updateWorkerDto);
+
+        return namedParameterJdbcTemplate.update(exclusiveLock
+                        ? UPDATE_RANKING_PROCESSOR_LOCK_SQL + " and worker_count = 0"
+                        : UPDATE_RANKING_PROCESSOR_LOCK_SQL,
+                sqlParameterSource);
+    }
+
+    @Override
+    public int unregisterWorker(RankingProcess process) {
+        return updateWorker(process, -1, false);
+    }
+
+    @Override
+    public int getWorkerCount(RankingProcess process) {
+        return jdbcTemplate.queryForObject(GET_WORKER_COUNT_SQL, Integer.class, process.name());
+    }
+
+    @Getter
+    @AllArgsConstructor
+    private static class UpdateWorkerDto {
+        private String processId;
+        private Integer value;
+        private String updateUser;
     }
 
 }

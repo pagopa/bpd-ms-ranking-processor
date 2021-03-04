@@ -6,6 +6,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
+import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.util.DaoHelper;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.cashback.CashbackUpdateException;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +14,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -59,35 +59,40 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
         List<WinningTransaction> transactions = retrieveTransactions(awardPeriod.getAwardPeriodId(), pageRequest);
 
         List<CitizenRanking> rankings = new ArrayList<>(aggregatorStrategy.aggregate(awardPeriod, transactions));
-        int[] affectedRows = citizenRankingDao.updateCashback(rankings);
 
-        if (affectedRows.length != rankings.size()) {
-            String message = String.format(ERROR_MESSAGE_TEMPLATE, "updateCashback", affectedRows.length, rankings.size());
-            log.error(message);
-            throw new CashbackUpdateException(message);
+        if (!rankings.isEmpty()) {
+            int[] affectedRows = citizenRankingDao.updateCashback(rankings);
 
-        } else {
-            ArrayList<CitizenRanking> failedUpdateRankings = new ArrayList<>();
+            if (affectedRows.length != rankings.size()) {
+                String message = String.format(ERROR_MESSAGE_TEMPLATE, "updateCashback", affectedRows.length, rankings.size());
+                log.error(message);
+                throw new CashbackUpdateException(message);
 
-            for (int i = 0; i < affectedRows.length; i++) {
+            } else {
+                ArrayList<CitizenRanking> failedUpdateRankings = new ArrayList<>();
 
-                if (affectedRows[i] < 1) {
-                    rankings.get(i).setInsertDate(rankings.get(i).getUpdateDate());
-                    rankings.get(i).setInsertUser(rankings.get(i).getUpdateUser());
-                    rankings.get(i).setUpdateDate(null);
-                    rankings.get(i).setUpdateUser(null);
-                    failedUpdateRankings.add(rankings.get(i));
+                for (int i = 0; i < affectedRows.length; i++) {
+
+                    if (affectedRows[i] < 1) {
+                        rankings.get(i).setInsertDate(rankings.get(i).getUpdateDate());
+                        rankings.get(i).setInsertUser(rankings.get(i).getUpdateUser());
+                        rankings.get(i).setUpdateDate(null);
+                        rankings.get(i).setUpdateUser(null);
+                        failedUpdateRankings.add(rankings.get(i));
+                    }
                 }
-            }
 
-            if (!failedUpdateRankings.isEmpty()) {
-                affectedRows = citizenRankingDao.insertCashback(failedUpdateRankings);
-                checkErrors(failedUpdateRankings.size(), affectedRows, "insertCashback");
+                if (!failedUpdateRankings.isEmpty()) {
+                    affectedRows = citizenRankingDao.insertCashback(failedUpdateRankings);
+                    checkErrors(failedUpdateRankings.size(), affectedRows, "insertCashback");
+                }
             }
         }
 
-        affectedRows = winningTransactionDao.updateProcessedTransaction(transactions);
-        checkErrors(transactions.size(), affectedRows, "updateProcessedTransaction");
+        if (!transactions.isEmpty()) {
+            int[] affectedRows = winningTransactionDao.updateProcessedTransaction(transactions);
+            checkErrors(transactions.size(), affectedRows, "updateProcessedTransaction");
+        }
 
         return transactions.size();
     }
@@ -104,7 +109,7 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
 
         } else {
             long failedUpdateCount = Arrays.stream(affectedRows)
-                    .filter(value -> value != 1 && value != Statement.SUCCESS_NO_INFO)
+                    .filter(DaoHelper.isStatementResultKO)
                     .count();
 
             if (failedUpdateCount > 0) {
