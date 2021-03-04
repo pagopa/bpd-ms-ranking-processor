@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: bpdmsrankingprocessor
 spec:
-  replicas: 12
+  replicas: 1
   selector:
     matchLabels:
       app: bpdmsrankingprocessor
@@ -24,12 +24,12 @@ spec:
           envFrom:
             - secretRef:
                 name: postgres-credentials
-            - secretRef:
-                name: bpdmsrankingprocessor
             - configMapRef:
                 name: eventhub-logging
             - configMapRef:
                 name: bpdmsrankingprocessor
+            - configMapRef:
+                name: rest-client
             - configMapRef:
                 name: jvm
           livenessProbe:
