@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: bpdmsrankingprocessor
 spec:
-  replicas: 10
+  replicas: 1
   selector:
     matchLabels:
       app: bpdmsrankingprocessor
@@ -24,12 +24,12 @@ spec:
           envFrom:
             - secretRef:
                 name: postgres-credentials
-            - secretRef:
-                name: bpdmsrankingprocessor
             - configMapRef:
                 name: eventhub-logging
             - configMapRef:
                 name: bpdmsrankingprocessor
+            - configMapRef:
+                name: rest-client
             - configMapRef:
                 name: jvm
           livenessProbe:
@@ -60,6 +60,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 30
+          imagePullPolicy: Always #TODO: remove me
       hostAliases:
         - hostnames:
             - bpd-event-uat.servicebus.windows.net
