@@ -1,4 +1,4 @@
-package it.gov.pagopa.bpd.ranking_processor.service.ranking;
+package it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.BeanFactory;

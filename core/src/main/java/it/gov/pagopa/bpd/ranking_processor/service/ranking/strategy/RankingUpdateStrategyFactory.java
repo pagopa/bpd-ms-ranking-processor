@@ -1,4 +1,4 @@
-package it.gov.pagopa.bpd.ranking_processor.service.ranking;
+package it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy;
 
 /**
  * Abstract Factory of {@link RankingUpdateStrategy}

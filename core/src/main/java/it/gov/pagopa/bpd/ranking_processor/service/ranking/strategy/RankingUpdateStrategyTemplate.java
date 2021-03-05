@@ -1,4 +1,4 @@
-package it.gov.pagopa.bpd.ranking_processor.service.ranking;
+package it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
@@ -7,6 +7,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRankingEx
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.util.DaoHelper;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
+import it.gov.pagopa.bpd.ranking_processor.service.ranking.RankingUpdateException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.springframework.data.domain.PageRequest;

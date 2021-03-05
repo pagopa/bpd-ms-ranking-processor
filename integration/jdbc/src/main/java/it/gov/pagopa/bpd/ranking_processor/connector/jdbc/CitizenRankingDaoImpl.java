@@ -42,7 +42,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     private final String findAllOrderedByTrxNumSql;
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
-    private final RowMapperResultSetExtractor<CitizenRanking> findallResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
+    private final RowMapperResultSetExtractor<CitizenRanking> findAllResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
     private final SimpleJdbcInsertOperations insertRankingOps;
     private final SimpleJdbcInsertOperations insertRankingExtOps;
 
@@ -55,7 +55,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
             log.trace("CitizenRankingDaoImpl.CitizenRankingDaoImpl");
         }
         if (log.isDebugEnabled()) {
-            log.debug("jdbcTemplate = {}", jdbcTemplate);
+            log.debug("jdbcTemplate = {}, rankingTableName = {}, rankingExtTableName = {}", jdbcTemplate, rankingTableName, rankingExtTableName);
         }
 
         this.jdbcTemplate = jdbcTemplate;
@@ -78,10 +78,14 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
                 .withTableName(rankingExtTableName)
                 .usingColumns(rankingExtColumns);
 
-        updateCashbackSql = String.format("update %s set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", rankingTableName);
-        findAllOrderedByTrxNumSql = String.format("select fiscal_code_c, award_period_id_n, transaction_n, cashback_n, ranking_n from %s where award_period_id_n = ?", rankingTableName);
-        updateRankingSql = String.format("update %s set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId", rankingTableName);
-        updateRankingExtSql = String.format("update %s set total_participants = :totalParticipants, min_transaction_n = :minTransactionNumber, max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId", rankingExtTableName);
+        updateCashbackSql = String.format("update %s set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId",
+                rankingTableName);
+        findAllOrderedByTrxNumSql = String.format("select fiscal_code_c, award_period_id_n, transaction_n, cashback_n, ranking_n from %s where award_period_id_n = ?",
+                rankingTableName);
+        updateRankingSql = String.format("update %s set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId",
+                rankingTableName);
+        updateRankingExtSql = String.format("update %s set total_participants = :totalParticipants, min_transaction_n = :minTransactionNumber, max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId",
+                rankingExtTableName);
     }
 
 
@@ -133,18 +137,29 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         return namedParameterJdbcTemplate.update(updateRankingExtSql, parameters);
     }
 
-
     @Override
-    public int[] updateRanking(Collection<CitizenRanking> citizenRankings) {
+    public List<CitizenRanking> findAll(long awardPeriodId, Pageable pageable) {
         if (log.isTraceEnabled()) {
-            log.trace("CitizenRankingDaoImpl.updateRanking");
+            log.trace("CitizenRankingDaoImpl.findAll");
         }
         if (log.isDebugEnabled()) {
-            log.debug("citizenRankings = {}", citizenRankings);
+            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
         }
 
-        SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings.toArray());
-        return namedParameterJdbcTemplate.batchUpdate(updateRankingSql, batchValues);
+        StringBuilder clauses = new StringBuilder();
+        if (pageable != null) {
+            if (!pageable.getSort().isEmpty()) {
+                clauses.append(" ORDER BY ").append(pageable.getSort().toString().replace(":", ""));
+            }
+            if (pageable.isPaged()) {
+                clauses.append(" LIMIT ").append(pageable.getPageSize())
+                        .append(" OFFSET ").append(pageable.getOffset());
+            }
+        }
+
+        return jdbcTemplate.query(connection -> connection.prepareStatement(findAllOrderedByTrxNumSql + clauses),
+                preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
+                findAllResultSetExtractor);
     }
 
     @Override
@@ -184,12 +199,6 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     static final class CitizenRankingMapper implements RowMapper<CitizenRanking> {
 
         public CitizenRanking mapRow(ResultSet rs, int rowNum) throws SQLException {
-            if (log.isTraceEnabled()) {
-                log.trace("CitizenRankingMapper.mapRow");
-            }
-            if (log.isDebugEnabled()) {
-                log.debug("rs = {}, rowNum = {}", rs, rowNum);
-            }
             return CitizenRanking.builder()
                     .fiscalCode(rs.getString("fiscal_code_c"))
                     .awardPeriodId(rs.getLong("award_period_id_n"))
@@ -228,28 +237,16 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     }
 
     @Override
-    public List<CitizenRanking> findAll(long awardPeriodId, Pageable pageable) {
+    public int[] updateRanking(Collection<CitizenRanking> citizenRankings) {
         if (log.isTraceEnabled()) {
-            log.trace("CitizenRankingDaoImpl.findAll");
+            log.trace("CitizenRankingDaoImpl.updateRanking");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
+            log.debug("citizenRankings = {}", citizenRankings);
         }
 
-        StringBuilder clauses = new StringBuilder();
-        if (pageable != null) {
-            if (!pageable.getSort().isEmpty()) {
-                clauses.append(" ORDER BY ").append(pageable.getSort().toString().replace(":", ""));
-            }
-            if (pageable.isPaged()) {
-                clauses.append(" LIMIT ").append(pageable.getPageSize())
-                        .append(" OFFSET ").append(pageable.getOffset());
-            }
-        }
-
-        return jdbcTemplate.query(connection -> connection.prepareStatement(findAllOrderedByTrxNumSql + clauses),
-                preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
-                findallResultSetExtractor);
+        SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(citizenRankings);
+        return namedParameterJdbcTemplate.batchUpdate(updateRankingSql, batchValues);
     }
 
     @Override

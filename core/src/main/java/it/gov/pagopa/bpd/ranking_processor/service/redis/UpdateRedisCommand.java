@@ -21,7 +21,8 @@ import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingD
 @Order
 class UpdateRedisCommand implements RankingSubProcessCommand {
 
-    public static final String MESSAGE = "Failed to update Redis table";
+    private static final String MESSAGE = "Failed to update Redis table";
+    private static final String FAILED_UPDATE_WORKER_MESSAGE_FORMAT = "Failed to %s worker to process %s";
 
     private final CitizenRankingDao citizenRankingDao;
 
@@ -51,30 +52,35 @@ class UpdateRedisCommand implements RankingSubProcessCommand {
                 && citizenRankingDao.getWorkerCount(UPDATE_RANKING) == 0) {
             int affectedRow = citizenRankingDao.registerWorker(UPDATE_REDIS, true);
             if (affectedRow != 0) {
-                if (DaoHelper.isStatementResultKO.test(affectedRow)) {
-                    String message = "Failed to register worker to process " + UPDATE_REDIS;
-                    log.error(message);
-                    throw new RedisUpdateException(message);
+                checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "register", UPDATE_REDIS));
+
+                try {
+                    affectedRow = citizenRankingDao.updateRedis();
+                    checkError(affectedRow, MESSAGE);
+
+                } catch (RuntimeException e) {
+                    log.error(e.getMessage());
+                    unregisterWorker();
+                    throw e;
                 }
 
-                affectedRow = citizenRankingDao.updateRedis();
+                unregisterWorker();
 
-                if (DaoHelper.isStatementResultKO.test(affectedRow)) {
-                    log.error(MESSAGE);
-                    throw new RedisUpdateException(MESSAGE);
-                }
-
-                affectedRow = citizenRankingDao.unregisterWorker(UPDATE_REDIS);
-                if (DaoHelper.isStatementResultKO.test(affectedRow)) {
-                    String message = "Failed to unregister worker to process " + UPDATE_REDIS;
-                    log.error(message);
-                    throw new RedisUpdateException(message);
-                }
             } else {
-                if (log.isTraceEnabled()) {
-                    log.trace("skip sub process");
-                }
+                log.info("skip sub process");
             }
+        }
+    }
+
+    private void unregisterWorker() {
+        int affectedRow = citizenRankingDao.unregisterWorker(UPDATE_REDIS);
+        checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "unregister", UPDATE_REDIS));
+    }
+
+    private void checkError(int affectedRow, String message) {
+        if (DaoHelper.isStatementResultKO.test(affectedRow)) {
+            log.error(message);
+            throw new RedisUpdateException(message);
         }
     }
 

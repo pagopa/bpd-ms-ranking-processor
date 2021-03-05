@@ -45,7 +45,8 @@ public class AwardPeriodRestClientTest extends BaseFeignRestClientTest {
     @Autowired
     private AwardPeriodRestClient restClient;
 
-    //FIXME: this test fails only inside Azure Pipeline due to "feign.codec.DecodeException: Cannot deserialize instance of `java.util.ArrayList` out of START_OBJECT token"
+    //FIXME: this test fails only if run by Azure Pipeline due to
+    // "feign.codec.DecodeException: Cannot deserialize instance of `java.util.ArrayList` out of START_OBJECT token"
 //    @Test
     public void getAwardPeriods_Ok_NotEmpty() {
         final List<AwardPeriod> actualResponse = restClient.getActiveAwardPeriods();

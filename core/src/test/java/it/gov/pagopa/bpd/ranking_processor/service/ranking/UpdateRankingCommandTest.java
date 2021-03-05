@@ -2,6 +2,8 @@ package it.gov.pagopa.bpd.ranking_processor.service.ranking;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
+import it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy.RankingUpdateStrategy;
+import it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy.RankingUpdateStrategyFactory;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
