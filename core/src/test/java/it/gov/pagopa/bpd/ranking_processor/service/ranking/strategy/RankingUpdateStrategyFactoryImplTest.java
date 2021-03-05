@@ -1,4 +1,4 @@
-package it.gov.pagopa.bpd.ranking_processor.service.ranking;
+package it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy;
 
 import org.junit.Assert;
 import org.junit.Test;

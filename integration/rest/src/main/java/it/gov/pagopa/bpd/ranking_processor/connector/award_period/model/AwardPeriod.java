@@ -13,6 +13,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(of = "awardPeriodId", callSuper = false)
+@ToString
 public class AwardPeriod {
 
     private Long awardPeriodId;

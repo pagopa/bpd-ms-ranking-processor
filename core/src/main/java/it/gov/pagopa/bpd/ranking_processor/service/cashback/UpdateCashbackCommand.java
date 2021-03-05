@@ -53,28 +53,45 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
             log.debug("awardPeriodId = {}", awardPeriod);
         }
 
+        registerWorker();
+
+        try {
+            for (TransactionType trxType : TransactionType.values()) {
+                CashbackUpdateStrategy cashbackUpdateStrategy = cashbackUpdateStrategyFactory.create(trxType);
+                int trxCount;
+                do {
+                    SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
+                    log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
+                    trxCount = cashbackUpdateStrategy.process(awardPeriod, trxType, pageRequest);
+                    log.info("End {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
+                } while (trxCount == cashbackUpdateLimit);
+            }
+
+        } catch (RuntimeException e) {
+            log.error(e.getMessage());
+            unregisterWorker();
+            throw e;
+        }
+
+        unregisterWorker();
+    }
+
+    private void registerWorker() {
         int affectedRow = citizenRankingDao.registerWorker(UPDATE_CASHBACK);
+        checkError(affectedRow, "register");
+    }
+
+    private void checkError(int affectedRow, String action) {
         if (DaoHelper.isStatementResultKO.test(affectedRow)) {
-            String message = "Failed to register worker to process " + UPDATE_CASHBACK;
+            String message = String.format("Failed to %s worker to process %s", action, UPDATE_CASHBACK);
             log.error(message);
             throw new CashbackUpdateException(message);
         }
+    }
 
-        for (TransactionType trxType : TransactionType.values()) {
-            CashbackUpdateStrategy cashbackUpdateStrategy = cashbackUpdateStrategyFactory.create(trxType);
-            int trxCount;
-            do {
-                SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
-                trxCount = cashbackUpdateStrategy.process(awardPeriod, trxType, pageRequest);
-            } while (trxCount == cashbackUpdateLimit);
-        }
-
-        affectedRow = citizenRankingDao.unregisterWorker(UPDATE_CASHBACK);
-        if (DaoHelper.isStatementResultKO.test(affectedRow)) {
-            String message = "Failed to unregister worker to process " + UPDATE_CASHBACK;
-            log.error(message);
-            throw new CashbackUpdateException(message);
-        }
+    private void unregisterWorker() {
+        int affectedRow = citizenRankingDao.unregisterWorker(UPDATE_CASHBACK);
+        checkError(affectedRow, "unregister");
     }
 
 }

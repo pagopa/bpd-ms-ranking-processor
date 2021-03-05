@@ -1,4 +1,4 @@
-package it.gov.pagopa.bpd.ranking_processor.service.ranking;
+package it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;

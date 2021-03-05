@@ -1,8 +1,10 @@
 package it.gov.pagopa.bpd.ranking_processor.model;
 
 import lombok.Getter;
+import lombok.ToString;
 
 @Getter
+@ToString
 public class SimplePageRequest {
 
     private final int page;

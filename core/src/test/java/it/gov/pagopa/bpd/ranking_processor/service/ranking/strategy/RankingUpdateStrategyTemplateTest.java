@@ -1,4 +1,4 @@
-package it.gov.pagopa.bpd.ranking_processor.service.ranking;
+package it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -8,6 +8,7 @@ import eu.sia.meda.util.TestUtils;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
+import it.gov.pagopa.bpd.ranking_processor.service.ranking.RankingUpdateException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,7 +21,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 
-import static it.gov.pagopa.bpd.ranking_processor.service.ranking.RankingUpdateStrategyTemplate.ERROR_MESSAGE_TEMPLATE;
+import static it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy.RankingUpdateStrategyTemplate.ERROR_MESSAGE_TEMPLATE;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
