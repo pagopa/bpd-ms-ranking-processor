@@ -2,7 +2,6 @@ package it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
-import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 
 import java.util.function.BinaryOperator;
@@ -18,6 +17,6 @@ public interface CashbackUpdateStrategy {
         return cr1;
     };
 
-    int process(final AwardPeriod awardPeriod, WinningTransaction.TransactionType transactionType, SimplePageRequest simplePageRequest);
+    int process(final AwardPeriod awardPeriod, SimplePageRequest simplePageRequest);
 
 }

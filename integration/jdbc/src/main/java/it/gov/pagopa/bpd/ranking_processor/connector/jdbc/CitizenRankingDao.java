@@ -32,18 +32,17 @@ public interface CitizenRankingDao {
 
     int insertRankingExt(CitizenRankingExt rankingExt);
 
-    default int registerWorker(CitizenRankingDaoImpl.RankingProcess process) {
-        return registerWorker(process, false);
-    }
+    int registerWorker(RankingProcess process, boolean exclusiveLock);
 
-    int registerWorker(RankingProcess process, boolean lock);
-
-    int unregisterWorker(CitizenRankingDaoImpl.RankingProcess process);
+    int unregisterWorker(RankingProcess process);
 
     int getWorkerCount(RankingProcess process);
 
     enum RankingProcess {
         UPDATE_CASHBACK,
+        UPDATE_CASHBACK_PAYMENT,
+        UPDATE_CASHBACK_TOTAL_TRANSFER,
+        UPDATE_CASHBACK_PARTIAL_TRANSFER,
         UPDATE_RANKING,
         UPDATE_REDIS;
     }

@@ -67,15 +67,17 @@ class UpdateRedisCommand implements RankingSubProcessCommand {
                 unregisterWorker();
 
             } else {
-                log.info("skip sub process");
+                log.info("skip {}", UPDATE_REDIS);
             }
         }
     }
+
 
     private void unregisterWorker() {
         int affectedRow = citizenRankingDao.unregisterWorker(UPDATE_REDIS);
         checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "unregister", UPDATE_REDIS));
     }
+
 
     private void checkError(int affectedRow, String message) {
         if (DaoHelper.isStatementResultKO.test(affectedRow)) {

@@ -5,7 +5,6 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
-import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.util.DaoHelper;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.cashback.CashbackUpdateException;
@@ -47,12 +46,12 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
 
     @Override
     @Transactional("chainedTransactionManager")
-    public int process(AwardPeriod awardPeriod, TransactionType transactionType, SimplePageRequest simplePageRequest) {
+    public int process(AwardPeriod awardPeriod, SimplePageRequest simplePageRequest) {
         if (log.isTraceEnabled()) {
             log.trace("CashbackUpdateStrategyTemplate.process");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, transactionType = {}, simplePageRequest = {}", awardPeriod, transactionType, simplePageRequest);
+            log.debug("awardPeriodId = {}, simplePageRequest = {}", awardPeriod, simplePageRequest);
         }
 
         Pageable pageRequest = PageRequest.of(simplePageRequest.getPage(), simplePageRequest.getSize());
