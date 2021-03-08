@@ -10,7 +10,6 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
-import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.cashback.CashbackUpdateException;
 import org.junit.Assert;
@@ -176,7 +175,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
         AwardPeriod awardPeriod = AwardPeriod.builder()
                 .awardPeriodId(1L)
                 .build();
-        int processedTrxCount = getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
+        int processedTrxCount = getCashbackUpdateService().process(awardPeriod, pageRequest);
 
         Assert.assertSame(LIMIT, processedTrxCount);
         verifyTrxToProcess(pageRequest, awardPeriod);
@@ -204,7 +203,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
         AwardPeriod awardPeriod = AwardPeriod.builder()
                 .awardPeriodId(1L)
                 .build();
-        int processedTrxCount = getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
+        int processedTrxCount = getCashbackUpdateService().process(awardPeriod, pageRequest);
 
         Assert.assertSame(LIMIT, processedTrxCount);
         verifyTrxToProcess(pageRequest, awardPeriod);
@@ -226,7 +225,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
@@ -258,7 +257,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
@@ -292,7 +291,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
@@ -325,7 +324,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
@@ -358,7 +357,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 .build();
 
         try {
-            getCashbackUpdateService().process(awardPeriod, TransactionType.PAYMENT, pageRequest);
+            getCashbackUpdateService().process(awardPeriod, pageRequest);
 
         } catch (CashbackUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
