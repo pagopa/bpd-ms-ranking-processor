@@ -45,6 +45,7 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
         this.rankingUpdateLimit = rankingUpdateLimit;
     }
 
+
     @Override
     public void execute(AwardPeriod awardPeriod) {
         if (log.isTraceEnabled()) {
@@ -60,17 +61,7 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
                 checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "register", UPDATE_RANKING));
 
                 try {
-                    int pageNumber = 0;
-                    int citizensCount;
-                    RankingUpdateStrategy rankingUpdateStrategy = rankingUpdateStrategyFactory.create();
-                    do {
-                        SimplePageRequest pageRequest = SimplePageRequest.of(pageNumber++, rankingUpdateLimit);
-                        log.info("Start {} with page {}", rankingUpdateStrategy.getClass().getSimpleName(), pageRequest);
-                        citizensCount = rankingUpdateStrategy.process(awardPeriod.getAwardPeriodId(), pageRequest);
-                        log.info("End {} with page {}", rankingUpdateStrategy.getClass().getSimpleName(), pageRequest);
-                    } while (citizensCount >= rankingUpdateLimit);
-
-                    rankingUpdateStrategy.updateRankingExt(awardPeriod);
+                    exec(awardPeriod);
 
                 } catch (RuntimeException e) {
                     log.error(e.getMessage());
@@ -80,15 +71,34 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
                 unregisterWorker();
 
             } else {
-                log.info("skip sub process");
+                log.info("skip {}", UPDATE_RANKING);
             }
         }
     }
+
+
+    private void exec(AwardPeriod awardPeriod) {
+        int pageNumber = 0;
+        int citizensCount;
+        RankingUpdateStrategy rankingUpdateStrategy = rankingUpdateStrategyFactory.create();
+
+        do {
+            SimplePageRequest pageRequest = SimplePageRequest.of(pageNumber++, rankingUpdateLimit);
+            log.info("Start {} with page {}", rankingUpdateStrategy.getClass().getSimpleName(), pageRequest);
+            citizensCount = rankingUpdateStrategy.process(awardPeriod.getAwardPeriodId(), pageRequest);
+            log.info("End {} with page {}", rankingUpdateStrategy.getClass().getSimpleName(), pageRequest);
+
+        } while (citizensCount >= rankingUpdateLimit);
+
+        rankingUpdateStrategy.updateRankingExt(awardPeriod);
+    }
+
 
     private void unregisterWorker() {
         int affectedRow = citizenRankingDao.unregisterWorker(UPDATE_RANKING);
         checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "unregister", UPDATE_RANKING));
     }
+
 
     private void checkError(int affectedRow, String message) {
         if (DaoHelper.isStatementResultKO.test(affectedRow)) {
