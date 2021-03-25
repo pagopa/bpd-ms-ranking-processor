@@ -51,7 +51,7 @@ class UpdateRedisCommand implements RankingSubProcessCommand {
             log.debug("awardPeriod = {}", awardPeriod);
         }
 
-        if ((stopDateTime == null || LocalDateTime.now().isBefore(stopDateTime))
+        if (!isToStop.test(stopDateTime)
                 && citizenRankingDao.getWorkerCount(UPDATE_CASHBACK) == 0
                 && citizenRankingDao.getWorkerCount(UPDATE_RANKING) == 0) {
             int affectedRow = citizenRankingDao.registerWorker(UPDATE_REDIS, true);

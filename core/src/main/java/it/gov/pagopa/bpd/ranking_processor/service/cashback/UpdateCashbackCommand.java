@@ -105,13 +105,13 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
         CashbackUpdateStrategy cashbackUpdateStrategy = cashbackUpdateStrategyFactory.create(trxType);
 
         int trxCount = cashbackUpdateLimit;
-        while (trxCount == cashbackUpdateLimit && (stopDateTime == null || LocalDateTime.now().isBefore(stopDateTime))) {
+        while (trxCount == cashbackUpdateLimit && !isToStop.test(stopDateTime)) {
 
             SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
             log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
 
             int retryCount = 0;
-            while (retryCount < cashbackUpdateDeadlockRetry && (stopDateTime == null || LocalDateTime.now().isBefore(stopDateTime))) {
+            while (retryCount < cashbackUpdateDeadlockRetry && !isToStop.test(stopDateTime)) {
 
                 try {
                     trxCount = cashbackUpdateStrategy.process(awardPeriod, pageRequest);
