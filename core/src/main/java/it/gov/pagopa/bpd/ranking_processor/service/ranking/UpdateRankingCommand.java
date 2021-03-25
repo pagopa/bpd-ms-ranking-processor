@@ -85,15 +85,16 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
         int citizensCount = rankingUpdateLimit;
         RankingUpdateStrategy rankingUpdateStrategy = rankingUpdateStrategyFactory.create();
 
-        while (citizensCount == rankingUpdateLimit && (stopDateTime == null || LocalDateTime.now().isBefore(stopDateTime))) {
+        while (citizensCount == rankingUpdateLimit && !isToStop.test(stopDateTime)) {
             SimplePageRequest pageRequest = SimplePageRequest.of(pageNumber++, rankingUpdateLimit);
             log.info("Start {} with page {}", rankingUpdateStrategy.getClass().getSimpleName(), pageRequest);
             citizensCount = rankingUpdateStrategy.process(awardPeriod.getAwardPeriodId(), pageRequest);
             log.info("End {} with page {}", rankingUpdateStrategy.getClass().getSimpleName(), pageRequest);
-
         }
 
-        rankingUpdateStrategy.updateRankingExt(awardPeriod);
+        if (!isToStop.test(stopDateTime)) {
+            rankingUpdateStrategy.updateRankingExt(awardPeriod);
+        }
     }
 
 
