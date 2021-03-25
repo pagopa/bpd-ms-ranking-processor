@@ -48,7 +48,7 @@ public class UpdateRedisCommandTest {
 
     @Test
     public void execute_Ok() {
-        updateRedisCommand.execute(null);
+        updateRedisCommand.execute(null, null);
 
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_RANKING));
@@ -63,7 +63,7 @@ public class UpdateRedisCommandTest {
         processResult = false;
 
         try {
-            updateRedisCommand.execute(null);
+            updateRedisCommand.execute(null, null);
         } catch (Exception e) {
             Assert.assertEquals("Failed to update Redis table", e.getMessage());
             throw e;
@@ -80,7 +80,7 @@ public class UpdateRedisCommandTest {
     public void execute_OkUpdateCashbackIncomplete() {
         getCashbackWorkerCountResult = false;
 
-        updateRedisCommand.execute(null);
+        updateRedisCommand.execute(null, null);
 
         verify(citizenRankingDaoMock, only()).getWorkerCount(eq(UPDATE_CASHBACK));
         verifyNoMoreInteractions(citizenRankingDaoMock);
@@ -90,7 +90,7 @@ public class UpdateRedisCommandTest {
     public void execute_OkUpdateRankingIncomplete() {
         getRankingWorkerCountResult = false;
 
-        updateRedisCommand.execute(null);
+        updateRedisCommand.execute(null, null);
 
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_RANKING));
@@ -101,7 +101,7 @@ public class UpdateRedisCommandTest {
     public void execute_KoRegisterWorker() {
         registerWorkerResult = false;
         try {
-            updateRedisCommand.execute(null);
+            updateRedisCommand.execute(null, null);
         } catch (Exception e) {
             Assert.assertEquals("Failed to register worker to process " + UPDATE_REDIS, e.getMessage());
             throw e;
@@ -112,7 +112,7 @@ public class UpdateRedisCommandTest {
     public void execute_KoUnregisterWorker() {
         unregisterWorkerResult = false;
         try {
-            updateRedisCommand.execute(null);
+            updateRedisCommand.execute(null, null);
         } catch (Exception e) {
             Assert.assertEquals("Failed to unregister worker to process " + UPDATE_REDIS, e.getMessage());
             throw e;

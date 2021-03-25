@@ -10,6 +10,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.*;
 
 /**
@@ -26,6 +28,7 @@ class UpdateRedisCommand implements RankingSubProcessCommand {
 
     private final CitizenRankingDao citizenRankingDao;
 
+
     @Autowired
     public UpdateRedisCommand(CitizenRankingDao citizenRankingDao) {
         if (log.isTraceEnabled()) {
@@ -40,7 +43,7 @@ class UpdateRedisCommand implements RankingSubProcessCommand {
 
 
     @Override
-    public void execute(AwardPeriod awardPeriod) {
+    public void execute(AwardPeriod awardPeriod, LocalDateTime stopDateTime) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateRedisCommand.execute");
         }
@@ -48,7 +51,8 @@ class UpdateRedisCommand implements RankingSubProcessCommand {
             log.debug("awardPeriod = {}", awardPeriod);
         }
 
-        if (citizenRankingDao.getWorkerCount(UPDATE_CASHBACK) == 0
+        if (!isToStop.test(stopDateTime)
+                && citizenRankingDao.getWorkerCount(UPDATE_CASHBACK) == 0
                 && citizenRankingDao.getWorkerCount(UPDATE_RANKING) == 0) {
             int affectedRow = citizenRankingDao.registerWorker(UPDATE_REDIS, true);
             if (affectedRow != 0) {

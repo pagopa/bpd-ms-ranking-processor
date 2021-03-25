@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +19,7 @@ import static it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy.Cash
 import static java.math.BigDecimal.ROUND_HALF_DOWN;
 
 /**
- * Standard aggregator to handle partial transfer
+ * Aggregator to handle partial transfer
  */
 @Slf4j
 @Service
@@ -33,48 +32,6 @@ class PartialTransferAggregator implements AggregatorStrategy {
         executionStrategy = executionStrategyFactory.create();
     }
 
-    public static void main(String[] args) {
-        PartialTransferAggregator partialTransferAggregator = new PartialTransferAggregator(new ExecutionStrategyFactoryImpl(null, false));
-        ArrayList<WinningTransaction> winningTransactions = new ArrayList<>();
-        WinningTransaction.WinningTransactionBuilder builder1 = WinningTransaction.builder()
-                .acquirerCode("acquirer_c")
-                .trxDate(OffsetDateTime.now())
-                .correlationId("correlation_id_s_1")
-                .acquirerId("acquirer_id_s")
-                .amountBalance(BigDecimal.valueOf(200))
-                .fiscalCode("fiscal_code_s_1");
-        for (int i = 0; i < 4; i++) {
-            winningTransactions.add(builder1
-                    .operationType("01")
-                    .amount(BigDecimal.valueOf(20))
-                    .score(BigDecimal.valueOf(-2))
-                    .build());
-        }
-        WinningTransaction.WinningTransactionBuilder builder2 = WinningTransaction.builder()
-                .acquirerCode("acquirer_c")
-                .trxDate(OffsetDateTime.now())
-                .correlationId("correlation_id_s_2")
-                .acquirerId("acquirer_id_s")
-                .amountBalance(BigDecimal.valueOf(160))
-                .fiscalCode("fiscal_code_s_2");
-        for (int i = 0; i < 4; i++) {
-            winningTransactions.add(builder2
-                    .operationType("01")
-                    .amount(BigDecimal.valueOf(5))
-                    .score(BigDecimal.valueOf(-0.5))
-                    .build());
-        }
-
-        AwardPeriod awardPeriod = AwardPeriod.builder()
-                .awardPeriodId(1L)
-                .maxTransactionEvaluated(150L)
-                .cashbackPercentage(10)
-                .build();
-
-        Collection<CitizenRanking> rankings = partialTransferAggregator.aggregate(awardPeriod, winningTransactions);
-
-        System.out.println("rankings = " + rankings);
-    }
 
     @Override
     public Collection<CitizenRanking> aggregate(AwardPeriod awardPeriod, List<WinningTransaction> transactions) {

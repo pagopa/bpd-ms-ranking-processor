@@ -78,11 +78,11 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
                 .withTableName(rankingExtTableName)
                 .usingColumns(rankingExtColumns);
 
-        updateCashbackSql = String.format("update %s set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId",
+        updateCashbackSql = String.format("update %s bcr set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)",
                 rankingTableName);
         findAllOrderedByTrxNumSql = String.format("select fiscal_code_c, award_period_id_n, transaction_n, cashback_n, ranking_n from %s where award_period_id_n = ?",
                 rankingTableName);
-        updateRankingSql = String.format("update %s set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId",
+        updateRankingSql = String.format("update %s bcr set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)",
                 rankingTableName);
         updateRankingExtSql = String.format("update %s set total_participants = :totalParticipants, min_transaction_n = :minTransactionNumber, max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId",
                 rankingExtTableName);
