@@ -50,7 +50,7 @@ public class UpdateRankingCommandTest {
 
     @Test
     public void execute_Ok() {
-        updateRankingCommand.execute(Mockito.mock(AwardPeriod.class));
+        updateRankingCommand.execute(Mockito.mock(AwardPeriod.class), null);
 
         BDDMockito.verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK));
         BDDMockito.verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_RANKING), eq(true));
@@ -63,7 +63,7 @@ public class UpdateRankingCommandTest {
     public void execute_OkUpdateCashbackIncomplete() {
         getWorkerCountResult = false;
 
-        updateRankingCommand.execute(null);
+        updateRankingCommand.execute(null, null);
 
         BDDMockito.verify(citizenRankingDaoMock, only()).getWorkerCount(eq(UPDATE_CASHBACK));
         verifyNoMoreInteractions(citizenRankingDaoMock);
@@ -74,7 +74,7 @@ public class UpdateRankingCommandTest {
     public void execute_KoRegisterWorker() {
         registerWorkerResult = false;
         try {
-            updateRankingCommand.execute(Mockito.mock(AwardPeriod.class));
+            updateRankingCommand.execute(Mockito.mock(AwardPeriod.class), null);
         } catch (Exception e) {
             Assert.assertEquals("Failed to register worker to process " + UPDATE_RANKING, e.getMessage());
             throw e;
@@ -85,7 +85,7 @@ public class UpdateRankingCommandTest {
     public void execute_KoUnregisterWorker() {
         unregisterWorkerResult = false;
         try {
-            updateRankingCommand.execute(Mockito.mock(AwardPeriod.class));
+            updateRankingCommand.execute(Mockito.mock(AwardPeriod.class), null);
         } catch (Exception e) {
             Assert.assertEquals("Failed to unregister worker to process " + UPDATE_RANKING, e.getMessage());
             throw e;
