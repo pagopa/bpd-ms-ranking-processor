@@ -68,7 +68,7 @@ public class RankingProcessorServiceImplTest {
         rankingProcessorService.execute();
 
         verify(restClientMock, only()).getActiveAwardPeriods();
-        subProcessesMock.forEach(command -> verify(command, only()).execute(any(AwardPeriod.class)));
+        subProcessesMock.forEach(command -> verify(command, only()).execute(any(), any()));
     }
 
     @Test
@@ -78,21 +78,21 @@ public class RankingProcessorServiceImplTest {
         rankingProcessorService.execute();
 
         verify(restClientMock, only()).getActiveAwardPeriods();
-        subProcessesMock.forEach(command -> verify(command, times(findActiveResult.getValue())).execute(any(AwardPeriod.class)));
+        subProcessesMock.forEach(command -> verify(command, times(findActiveResult.getValue())).execute(any(), any()));
     }
 
     @Test
     public void process_Ok() {
-        rankingProcessorService.process(1L);
+        rankingProcessorService.process(1L, null);
 
         verify(restClientMock, only()).findById(1);
-        subProcessesMock.forEach(command -> verify(command, only()).execute(any(AwardPeriod.class)));
+        subProcessesMock.forEach(command -> verify(command, only()).execute(any(), any()));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void process_KoNullAwardPeriod() {
         try {
-            rankingProcessorService.process(null);
+            rankingProcessorService.process(null, null);
         } catch (Exception e) {
             verifyZeroInteractions(restClientMock);
             subProcessesMock.forEach(command -> verifyZeroInteractions(command));

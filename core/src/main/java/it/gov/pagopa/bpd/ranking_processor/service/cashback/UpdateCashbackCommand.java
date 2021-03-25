@@ -16,6 +16,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.*;
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType.PARTIAL_TRANSFER;
 
@@ -31,6 +33,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
     private final int cashbackUpdateLimit;
     private final int cashbackUpdateDeadlockRetry;
     private final CitizenRankingDao citizenRankingDao;
+
 
     @Autowired
     public UpdateCashbackCommand(CashbackUpdateStrategyFactory cashbackUpdateStrategyFactory,
@@ -55,7 +58,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
 
 
     @Override
-    public void execute(AwardPeriod awardPeriod) {
+    public void execute(AwardPeriod awardPeriod, LocalDateTime stopDateTime) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateCashbackCommand.execute");
         }
@@ -77,7 +80,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
             registerWorker(getUpdateRankingSubProcess(trxType), PARTIAL_TRANSFER.equals(trxType));
 
             try {
-                exec(awardPeriod, trxType);
+                exec(awardPeriod, trxType, stopDateTime);
 
             } catch (RuntimeException e) {
                 log.error(e.getMessage());
@@ -98,30 +101,30 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
     }
 
 
-    private void exec(AwardPeriod awardPeriod, TransactionType trxType) {
+    private void exec(AwardPeriod awardPeriod, TransactionType trxType, LocalDateTime stopDateTime) {
         CashbackUpdateStrategy cashbackUpdateStrategy = cashbackUpdateStrategyFactory.create(trxType);
 
-        int trxCount = 0;
-        do {
+        int trxCount = cashbackUpdateLimit;
+        while (trxCount == cashbackUpdateLimit && (stopDateTime == null || LocalDateTime.now().isBefore(stopDateTime))) {
+
             SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
             log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
 
             int retryCount = 0;
-            do {
+            while (retryCount < cashbackUpdateDeadlockRetry && (stopDateTime == null || LocalDateTime.now().isBefore(stopDateTime))) {
 
                 try {
                     trxCount = cashbackUpdateStrategy.process(awardPeriod, pageRequest);
-                    retryCount = cashbackUpdateDeadlockRetry;
+                    break;
 
                 } catch (DeadlockLoserDataAccessException e) {
                     retryCount++;
                 }
 
-            } while (retryCount < cashbackUpdateDeadlockRetry);
+            }
 
             log.info("End {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
-
-        } while (trxCount == cashbackUpdateLimit);
+        }
     }
 
 

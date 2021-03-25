@@ -60,7 +60,7 @@ public class BpdRankingProcessorControllerImplTest {
                 throw new RuntimeException("Test Error");
             return null;
         }).when(rankingProcessorService)
-                .process(Mockito.anyLong());
+                .process(Mockito.anyLong(), Mockito.any());
     }
 
     @Test

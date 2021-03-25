@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.UPDATE_CASHBACK;
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.UPDATE_RANKING;
 
@@ -28,6 +30,7 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
     private final RankingUpdateStrategyFactory rankingUpdateStrategyFactory;
     private final int rankingUpdateLimit;
     private final CitizenRankingDao citizenRankingDao;
+
 
     @Autowired
     public UpdateRankingCommand(RankingUpdateStrategyFactory rankingUpdateStrategyFactory,
@@ -47,7 +50,7 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
 
 
     @Override
-    public void execute(AwardPeriod awardPeriod) {
+    public void execute(AwardPeriod awardPeriod, LocalDateTime stopDateTime) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateRankingCommand.execute");
         }
@@ -61,7 +64,7 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
                 checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "register", UPDATE_RANKING));
 
                 try {
-                    exec(awardPeriod);
+                    exec(awardPeriod, stopDateTime);
 
                 } catch (RuntimeException e) {
                     log.error(e.getMessage());
@@ -77,18 +80,18 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
     }
 
 
-    private void exec(AwardPeriod awardPeriod) {
+    private void exec(AwardPeriod awardPeriod, LocalDateTime stopDateTime) {
         int pageNumber = 0;
-        int citizensCount;
+        int citizensCount = rankingUpdateLimit;
         RankingUpdateStrategy rankingUpdateStrategy = rankingUpdateStrategyFactory.create();
 
-        do {
+        while (citizensCount == rankingUpdateLimit && (stopDateTime == null || LocalDateTime.now().isBefore(stopDateTime))) {
             SimplePageRequest pageRequest = SimplePageRequest.of(pageNumber++, rankingUpdateLimit);
             log.info("Start {} with page {}", rankingUpdateStrategy.getClass().getSimpleName(), pageRequest);
             citizensCount = rankingUpdateStrategy.process(awardPeriod.getAwardPeriodId(), pageRequest);
             log.info("End {} with page {}", rankingUpdateStrategy.getClass().getSimpleName(), pageRequest);
 
-        } while (citizensCount >= rankingUpdateLimit);
+        }
 
         rankingUpdateStrategy.updateRankingExt(awardPeriod);
     }

@@ -18,7 +18,7 @@ import java.util.function.Function;
 import static it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy.CashbackUpdateStrategy.CASHBACK_MAPPER;
 
 /**
- * Standard aggregator to handle payment and total transfer
+ * Common-case aggregator to handle payment and total transfer
  */
 @Slf4j
 @Service

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -30,31 +31,12 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
         log.info("RankingProcessorServiceImpl.execute start");
 
         List<AwardPeriod> activeAwardPeriods = awardPeriodRestClient.getActiveAwardPeriods();
-        activeAwardPeriods.forEach(this::process);
+        activeAwardPeriods.forEach(awardPeriod -> process(awardPeriod, null));
 
         log.info("RankingProcessorServiceImpl.execute end");
     }
 
-
-    @Override
-    public void process(Long awardPeriodId) {
-        if (log.isTraceEnabled()) {
-            log.trace("RankingProcessorServiceImpl.process");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}", awardPeriodId);
-        }
-
-        if (awardPeriodId == null) {
-            throw new IllegalArgumentException("awardPeriodId can not be null");
-        }
-
-        AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);
-        process(awardPeriod);
-    }
-
-
-    private void process(AwardPeriod awardPeriod) {
+    private void process(AwardPeriod awardPeriod, LocalDateTime stopDateTime) {
         if (log.isTraceEnabled()) {
             log.trace("RankingProcessorServiceImpl.process");
         }
@@ -66,7 +48,24 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
             throw new IllegalArgumentException("awardPeriod can not be null");
         }
 
-        subProcesses.forEach(command -> command.execute(awardPeriod));
+        subProcesses.forEach(command -> command.execute(awardPeriod, stopDateTime));
+    }
+
+    @Override
+    public void process(Long awardPeriodId, LocalDateTime stopDateTime) {
+        if (log.isTraceEnabled()) {
+            log.trace("RankingProcessorServiceImpl.process");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("awardPeriodId = {}, stopDateTime = {}", awardPeriodId, stopDateTime);
+        }
+
+        if (awardPeriodId == null) {
+            throw new IllegalArgumentException("awardPeriodId can not be null");
+        }
+
+        AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);
+        process(awardPeriod, stopDateTime);
     }
 
 }

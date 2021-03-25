@@ -63,7 +63,7 @@ public class UpdateCashbackCommandTest {
 
     @Test
     public void execute_Ok() {
-        updateCashbackCommand.execute(null);
+        updateCashbackCommand.execute(null, null);
 
         verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK), eq(false));
         verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PAYMENT), eq(false));
@@ -87,7 +87,7 @@ public class UpdateCashbackCommandTest {
     public void execute_OkWithDeadLock() {
         deadLock = true;
 
-        updateCashbackCommand.execute(null);
+        updateCashbackCommand.execute(null, null);
 
         verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK), eq(false));
         verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PAYMENT), eq(false));
@@ -111,7 +111,7 @@ public class UpdateCashbackCommandTest {
     public void execute_OkSkipPartialTransfer() {
         skipPartialTransfer = true;
 
-        updateCashbackCommand.execute(null);
+        updateCashbackCommand.execute(null, null);
 
         verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK), eq(false));
         verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PAYMENT), eq(false));
@@ -135,7 +135,7 @@ public class UpdateCashbackCommandTest {
     public void execute_KoRegisterWorker() {
         registerWorkerResult = false;
         try {
-            updateCashbackCommand.execute(null);
+            updateCashbackCommand.execute(null, null);
         } catch (Exception e) {
             Assert.assertTrue(e.getMessage().startsWith("Failed to register worker to process "));
             throw e;
@@ -147,7 +147,7 @@ public class UpdateCashbackCommandTest {
     public void execute_KoUnregisterWorker() {
         unregisterWorkerResult = false;
         try {
-            updateCashbackCommand.execute(null);
+            updateCashbackCommand.execute(null, null);
         } catch (Exception e) {
             Assert.assertTrue(e.getMessage().startsWith("Failed to unregister worker to process "));
             throw e;
