@@ -76,15 +76,6 @@ class JdbcConfig {
         return new ChainedTransactionManager(winningTransactionTransactionManager, citizenTransactionManager);
     }
 
-//    @Bean
-//    public InitializingBean init(@Qualifier("winningTransactionDataSource") DataSource winningTransactionDataSource,
-//                                 @Qualifier("citizenDataSource") DataSource citizenDataSource) {
-//        return () -> {
-//            winningTransactionDataSource.getConnection();
-//            citizenDataSource.getConnection();
-//        };
-//    }
-
 
 //    @Bean
 //    public UserTransaction userTransaction() throws Throwable {
