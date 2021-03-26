@@ -118,6 +118,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
                     break;
 
                 } catch (DeadlockLoserDataAccessException e) {
+                    log.warn(e.getMessage());
                     retryCount++;
                 }
 

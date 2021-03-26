@@ -60,6 +60,7 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 30
+          imagePullPolicy: Always #TODO: remove me
       hostAliases:
         - hostnames:
             - bpd-event-uat.servicebus.windows.net
