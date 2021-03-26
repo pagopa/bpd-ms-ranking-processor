@@ -1,6 +1,5 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc.config;
 
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -77,14 +76,14 @@ class JdbcConfig {
         return new ChainedTransactionManager(winningTransactionTransactionManager, citizenTransactionManager);
     }
 
-    @Bean
-    public InitializingBean init(@Qualifier("winningTransactionDataSource") DataSource winningTransactionDataSource,
-                                 @Qualifier("citizenDataSource") DataSource citizenDataSource) {
-        return () -> {
-            winningTransactionDataSource.getConnection();
-            citizenDataSource.getConnection();
-        };
-    }
+//    @Bean
+//    public InitializingBean init(@Qualifier("winningTransactionDataSource") DataSource winningTransactionDataSource,
+//                                 @Qualifier("citizenDataSource") DataSource citizenDataSource) {
+//        return () -> {
+//            winningTransactionDataSource.getConnection();
+//            citizenDataSource.getConnection();
+//        };
+//    }
 
 
 //    @Bean
