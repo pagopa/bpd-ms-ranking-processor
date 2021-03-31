@@ -29,7 +29,7 @@ public class ParallelPartialTransferAggregatorTest extends PartialTransferAggreg
 
         int groupLoop;
         do {
-            groupLoop = random.nextInt(1000);
+            groupLoop = random.nextInt(100);
         } while (groupLoop == 0);
         ArrayList<WinningTransaction> winningTransactions = new ArrayList<>(groupLoop * 10);
         for (int i = 0; i < groupLoop; i++) {

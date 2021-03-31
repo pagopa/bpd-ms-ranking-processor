@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.mockito.BDDMockito;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 
 public class CashbackUpdateStrategyFactoryImplTest {
 
@@ -28,19 +29,34 @@ public class CashbackUpdateStrategyFactoryImplTest {
 
 
     private void initMocks() {
+        ObjectProvider paymentCashbackUpdateObjectProviderMock = Mockito.mock(ObjectProvider.class);
+        BDDMockito.doReturn(paymentCashbackUpdateMock)
+                .when(paymentCashbackUpdateObjectProviderMock)
+                .getIfAvailable();
+
+        ObjectProvider totalTransferCashbackUpdateObjectProviderMock = Mockito.mock(ObjectProvider.class);
+        BDDMockito.doReturn(totalTransferCashbackUpdateMock)
+                .when(totalTransferCashbackUpdateObjectProviderMock)
+                .getIfAvailable();
+
+        ObjectProvider partialTransferCashbackUpdateObjectProviderMock = Mockito.mock(ObjectProvider.class);
+        BDDMockito.doReturn(partialTransferCashbackUpdateMock)
+                .when(partialTransferCashbackUpdateObjectProviderMock)
+                .getIfAvailable();
+
         BDDMockito.doAnswer(invocationOnMock -> {
             Class argument = invocationOnMock.getArgument(0, Class.class);
             if (PaymentCashbackUpdate.class.getName().equals(argument.getName()))
-                return paymentCashbackUpdateMock;
+                return paymentCashbackUpdateObjectProviderMock;
             else if (TotalTransferCashbackUpdate.class.getName().equals(argument.getName()))
-                return totalTransferCashbackUpdateMock;
+                return totalTransferCashbackUpdateObjectProviderMock;
             else if (PartialTransferCashbackUpdate.class.getName().equals(argument.getName()))
-                return partialTransferCashbackUpdateMock;
+                return partialTransferCashbackUpdateObjectProviderMock;
             else
                 throw new IllegalArgumentException();
         })
                 .when(beanFactoryMock)
-                .getBean(Mockito.any(Class.class));
+                .getBeanProvider(Mockito.any(Class.class));
     }
 
 

@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -47,7 +46,7 @@ class PartialTransferAggregator implements AggregatorStrategy {
         OffsetDateTime now = OffsetDateTime.now();
         BigDecimal maxTrxEval = BigDecimal.valueOf(awardPeriod.getMaxTransactionEvaluated());
         BigDecimal negativeCashbackMultiplier = BigDecimal.valueOf(awardPeriod.getCashbackPercentage() / -100.0);
-        executionStrategy.streamSupplier(transactions).forEach(trx -> {
+        executionStrategy.streamSupplier(transactions).sequential().forEach(trx -> {
             trx.setUpdateDate(now);
             trx.setUpdateUser(RankingProcessorService.PROCESS_NAME);
             amountBalanceMap.compute(trx.getUniqueCorrelationKey(), (key, oldValue) -> {
@@ -65,21 +64,31 @@ class PartialTransferAggregator implements AggregatorStrategy {
                             trx.getAcquirerId(),
                             trx.getCorrelationId()));
                 } else if (newAmountBalance.compareTo(BigDecimal.ZERO) == 0) {
-                    rankingBuilder
-                            .totalCashback(trx.getScore().setScale(2, RoundingMode.HALF_DOWN))
+                    BigDecimal actualScore = trx.getAmount()
+                            .multiply(negativeCashbackMultiplier)
+                            .setScale(2, ROUND_HALF_DOWN);
+                    trx.setScore(actualScore);
+                    rankingBuilder.totalCashback(actualScore)
                             .transactionNumber(-1L);
                     rankingMap.merge(trx.getFiscalCode(), rankingBuilder.build(), CASHBACK_MAPPER);
                 } else if (newAmountBalance.compareTo(maxTrxEval) < 0) {
-                    rankingBuilder.transactionNumber(0L);
+                    BigDecimal actualScore;
                     if (oldAmountBalance.compareTo(maxTrxEval) > 0) {
-                        rankingBuilder.totalCashback(maxTrxEval
+                        actualScore = maxTrxEval
                                 .subtract(newAmountBalance)
                                 .multiply(negativeCashbackMultiplier)
-                                .setScale(2, ROUND_HALF_DOWN));
+                                .setScale(2, ROUND_HALF_DOWN);
                     } else {
-                        rankingBuilder.totalCashback(trx.getScore().setScale(2, RoundingMode.HALF_DOWN));
+                        actualScore = trx.getAmount()
+                                .multiply(negativeCashbackMultiplier)
+                                .setScale(2, ROUND_HALF_DOWN);
                     }
+                    trx.setScore(actualScore);
+                    rankingBuilder.transactionNumber(0L)
+                            .totalCashback(actualScore);
                     rankingMap.merge(trx.getFiscalCode(), rankingBuilder.build(), CASHBACK_MAPPER);
+                } else {
+                    trx.setScore(BigDecimal.ZERO);
                 }
                 return newAmountBalance;
             });
