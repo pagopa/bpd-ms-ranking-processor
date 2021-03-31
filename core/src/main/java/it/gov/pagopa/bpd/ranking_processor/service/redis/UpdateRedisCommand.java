@@ -6,7 +6,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.util.DaoHelper;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingSubProcessCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
@@ -19,7 +19,7 @@ import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingD
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(value = "redis-update.enable", havingValue = "true")
+@Conditional(RedisUpdateEnabledCondition.class)
 @Order
 class UpdateRedisCommand implements RankingSubProcessCommand {
 

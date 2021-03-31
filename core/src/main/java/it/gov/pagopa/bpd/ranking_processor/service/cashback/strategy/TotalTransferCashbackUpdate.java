@@ -6,6 +6,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransacti
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +17,7 @@ import java.util.List;
  */
 @Slf4j
 @Service
+@Conditional(CashbackUpdateTotalTransferEnabledCondition.class)
 class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
 
     @Autowired

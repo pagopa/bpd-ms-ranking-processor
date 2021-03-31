@@ -104,27 +104,31 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
     private void exec(AwardPeriod awardPeriod, TransactionType trxType, LocalDateTime stopDateTime) {
         CashbackUpdateStrategy cashbackUpdateStrategy = cashbackUpdateStrategyFactory.create(trxType);
 
-        int trxCount = cashbackUpdateLimit;
-        while (trxCount == cashbackUpdateLimit && !isToStop.test(stopDateTime)) {
+        if (cashbackUpdateStrategy == null) {
+            log.info("skip {}", getUpdateRankingSubProcess(trxType));
 
-            SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
-            log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
+        } else {
+            int trxCount = cashbackUpdateLimit;
+            while (trxCount == cashbackUpdateLimit && !isToStop.test(stopDateTime)) {
 
-            int retryCount = 0;
-            while (retryCount < cashbackUpdateDeadlockRetry && !isToStop.test(stopDateTime)) {
+                SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
+                log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
 
-                try {
-                    trxCount = cashbackUpdateStrategy.process(awardPeriod, pageRequest);
-                    break;
+                int retryCount = 0;
+                while (retryCount < cashbackUpdateDeadlockRetry && !isToStop.test(stopDateTime)) {
 
-                } catch (DeadlockLoserDataAccessException e) {
-                    log.warn(e.getMessage());
-                    retryCount++;
+                    try {
+                        trxCount = cashbackUpdateStrategy.process(awardPeriod, pageRequest);
+                        break;
+
+                    } catch (DeadlockLoserDataAccessException e) {
+                        log.warn(e.getMessage());
+                        retryCount++;
+                    }
                 }
 
+                log.info("End {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
             }
-
-            log.info("End {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
         }
     }
 

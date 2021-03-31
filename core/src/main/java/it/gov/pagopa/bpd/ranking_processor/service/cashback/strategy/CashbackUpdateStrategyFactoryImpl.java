@@ -36,11 +36,11 @@ class CashbackUpdateStrategyFactoryImpl implements CashbackUpdateStrategyFactory
         }
         switch (trxType) {
             case PAYMENT:
-                return beanFactory.getBean(PaymentCashbackUpdate.class);
+                return beanFactory.getBeanProvider(PaymentCashbackUpdate.class).getIfAvailable();
             case TOTAL_TRANSFER:
-                return beanFactory.getBean(TotalTransferCashbackUpdate.class);
+                return beanFactory.getBeanProvider(TotalTransferCashbackUpdate.class).getIfAvailable();
             case PARTIAL_TRANSFER:
-                return beanFactory.getBean(PartialTransferCashbackUpdate.class);
+                return beanFactory.getBeanProvider(PartialTransferCashbackUpdate.class).getIfAvailable();
             default:
                 throw new IllegalArgumentException("TransactionType '" + trxType + "' not handled");
         }
