@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.dao.DeadlockLoserDataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -31,7 +32,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
 
     private final CashbackUpdateStrategyFactory cashbackUpdateStrategyFactory;
     private final int cashbackUpdateLimit;
-    private final int cashbackUpdateDeadlockRetry;
+    private final int cashbackUpdateRetry;
     private final CitizenRankingDao citizenRankingDao;
 
 
@@ -39,21 +40,21 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
     public UpdateCashbackCommand(CashbackUpdateStrategyFactory cashbackUpdateStrategyFactory,
                                  CitizenRankingDao citizenRankingDao,
                                  @Value("${cashback-update.data-extraction.limit}") int cashbackUpdateLimit,
-                                 @Value("${cashback-update.deadlock-retry.limit}") Integer cashbackUpdateDeadlockRetry) {
+                                 @Value("${cashback-update.retry.limit}") Integer cashbackUpdateRetry) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateCashbackCommand.UpdateCashbackCommand");
         }
         if (log.isDebugEnabled()) {
-            log.debug("cashbackUpdateStrategyFactory = {}, citizenRankingDao = {}, cashbackUpdateLimit = {}, cashbackUpdateDeadlockRetry = {}", cashbackUpdateStrategyFactory, citizenRankingDao, cashbackUpdateLimit, cashbackUpdateDeadlockRetry);
+            log.debug("cashbackUpdateStrategyFactory = {}, citizenRankingDao = {}, cashbackUpdateLimit = {}, cashbackUpdateDeadlockRetry = {}", cashbackUpdateStrategyFactory, citizenRankingDao, cashbackUpdateLimit, cashbackUpdateRetry);
         }
-        if (cashbackUpdateDeadlockRetry != null && cashbackUpdateDeadlockRetry < 0) {
-            throw new IllegalArgumentException("deadlock retry limit must be a positive integer");
+        if (cashbackUpdateRetry != null && cashbackUpdateRetry < 0) {
+            throw new IllegalArgumentException("retry limit must be a positive integer");
         }
 
         this.cashbackUpdateStrategyFactory = cashbackUpdateStrategyFactory;
         this.citizenRankingDao = citizenRankingDao;
         this.cashbackUpdateLimit = cashbackUpdateLimit;
-        this.cashbackUpdateDeadlockRetry = cashbackUpdateDeadlockRetry == null ? Integer.MAX_VALUE : cashbackUpdateDeadlockRetry;
+        this.cashbackUpdateRetry = cashbackUpdateRetry == null ? Integer.MAX_VALUE : cashbackUpdateRetry;
     }
 
 
@@ -115,13 +116,13 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
                 log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
 
                 int retryCount = 0;
-                while (retryCount < cashbackUpdateDeadlockRetry && !isToStop.test(stopDateTime)) {
+                while (retryCount < cashbackUpdateRetry && !isToStop.test(stopDateTime)) {
 
                     try {
                         trxCount = cashbackUpdateStrategy.process(awardPeriod, pageRequest);
                         break;
 
-                    } catch (DeadlockLoserDataAccessException e) {
+                    } catch (DeadlockLoserDataAccessException | DuplicateKeyException e) {
                         log.warn(e.getMessage());
                         retryCount++;
                     }
