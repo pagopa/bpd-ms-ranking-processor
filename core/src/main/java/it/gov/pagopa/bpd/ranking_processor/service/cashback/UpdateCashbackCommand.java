@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.*;
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType.PARTIAL_TRANSFER;
+import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType.TOTAL_TRANSFER;
 
 /**
  * {@link RankingSubProcessCommand} implementation for Update Cashback subprocess
@@ -33,12 +34,14 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
     private final CashbackUpdateStrategyFactory cashbackUpdateStrategyFactory;
     private final int cashbackUpdateRetry;
     private final CitizenRankingDao citizenRankingDao;
+    private final boolean totalTransferSingleProcessEnabled;
 
 
     @Autowired
     public UpdateCashbackCommand(CashbackUpdateStrategyFactory cashbackUpdateStrategyFactory,
                                  CitizenRankingDao citizenRankingDao,
-                                 @Value("${cashback-update.retry.limit}") Integer cashbackUpdateRetry) {
+                                 @Value("${cashback-update.retry.limit}") Integer cashbackUpdateRetry,
+                                 @Value("${cashback-update.total-transfer.single-process.enable}") boolean totalTransferSingleProcessEnabled) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateCashbackCommand.UpdateCashbackCommand");
         }
@@ -52,6 +55,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
         this.cashbackUpdateStrategyFactory = cashbackUpdateStrategyFactory;
         this.citizenRankingDao = citizenRankingDao;
         this.cashbackUpdateRetry = cashbackUpdateRetry == null ? Integer.MAX_VALUE : cashbackUpdateRetry;
+        this.totalTransferSingleProcessEnabled = totalTransferSingleProcessEnabled;
     }
 
 
@@ -67,6 +71,13 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
         registerWorker(UPDATE_CASHBACK, false);
 
         for (TransactionType trxType : TransactionType.values()) {
+
+            if (TOTAL_TRANSFER.equals(trxType)
+                    && totalTransferSingleProcessEnabled
+                    && citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0) {
+                log.info("skip {}", UPDATE_CASHBACK_TOTAL_TRANSFER);
+                continue;
+            }
 
             if (PARTIAL_TRANSFER.equals(trxType)
                     && (citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0

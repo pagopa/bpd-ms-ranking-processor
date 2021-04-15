@@ -27,7 +27,7 @@ public class WinningTransactionDaoImplTest extends BaseTest {
 
     public WinningTransactionDaoImplTest() {
         jdbcTemplateMock = Mockito.mock(JdbcTemplate.class);
-        winningWinningTransactionDao = new WinningTransactionDaoImpl(jdbcTemplateMock, true, "elab_ranking_b");
+        winningWinningTransactionDao = new WinningTransactionDaoImpl(jdbcTemplateMock, true, "elab_ranking_b", "1 month");
     }
 
 

@@ -51,7 +51,7 @@ public class UpdateCashbackCommandTest {
         when(strategyFactory.create(Mockito.any()))
                 .thenReturn(updateStrategyMock);
 
-        updateCashbackCommand = new UpdateCashbackCommand(strategyFactory, citizenRankingDaoMock, null);
+        updateCashbackCommand = new UpdateCashbackCommand(strategyFactory, citizenRankingDaoMock, null, false);
     }
 
     @Before
