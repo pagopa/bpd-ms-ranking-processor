@@ -19,4 +19,6 @@ public interface CashbackUpdateStrategy {
 
     int process(final AwardPeriod awardPeriod, SimplePageRequest simplePageRequest);
 
+    int getDataExtractionLimit();
+
 }

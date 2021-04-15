@@ -2,6 +2,7 @@ package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.util.Collection;
 import java.util.List;
@@ -10,6 +11,11 @@ import java.util.List;
  * Data Access Object to manage the operations to the database related to {@link WinningTransaction} model
  */
 public interface WinningTransactionDao {
+
+    /**
+     * Sort to retrieve payment transaction sorted by fiscal code
+     */
+    Sort FIND_PAYMENT_TO_PROCESS_PAGEABLE_SORT = Sort.by("fiscal_code_s");
 
     List<WinningTransaction> findPaymentToProcess(Long awardPeriodId, Pageable pageable);
 

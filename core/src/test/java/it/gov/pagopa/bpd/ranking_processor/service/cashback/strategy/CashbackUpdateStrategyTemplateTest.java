@@ -165,7 +165,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 });
     }
 
-    protected static PageRequest toPageable(SimplePageRequest pageRequest) {
+    protected PageRequest toPageable(SimplePageRequest pageRequest) {
         return PageRequest.of(pageRequest.getPage(), pageRequest.getSize());
     }
 

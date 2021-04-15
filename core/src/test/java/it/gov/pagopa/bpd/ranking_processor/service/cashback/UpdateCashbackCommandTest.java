@@ -43,13 +43,15 @@ public class UpdateCashbackCommandTest {
             }
             return 0;
         }).given(updateStrategyMock).process(any(), any());
+        doReturn(2)
+                .when(updateStrategyMock).getDataExtractionLimit();
 
 
         strategyFactory = mock(CashbackUpdateStrategyFactory.class);
         when(strategyFactory.create(Mockito.any()))
                 .thenReturn(updateStrategyMock);
 
-        updateCashbackCommand = new UpdateCashbackCommand(strategyFactory, citizenRankingDaoMock, 2, null);
+        updateCashbackCommand = new UpdateCashbackCommand(strategyFactory, citizenRankingDaoMock, null);
     }
 
     @Before
@@ -79,6 +81,7 @@ public class UpdateCashbackCommandTest {
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
         verify(updateStrategyMock, times(3)).process(any(), any());
+        verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
         verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
     }
 
@@ -103,6 +106,7 @@ public class UpdateCashbackCommandTest {
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
         verify(updateStrategyMock, times(3 + 1)).process(any(), any());
+        verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
         verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
     }
 
@@ -127,6 +131,7 @@ public class UpdateCashbackCommandTest {
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, never()).create(eq(TransactionType.PARTIAL_TRANSFER));
         verify(updateStrategyMock, times(3 - 1)).process(any(), any());
+        verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
         verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
     }
 

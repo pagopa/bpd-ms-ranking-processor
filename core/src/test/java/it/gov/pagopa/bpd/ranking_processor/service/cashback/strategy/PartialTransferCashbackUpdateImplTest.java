@@ -12,7 +12,7 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
     private final CashbackUpdateStrategy cashbackUpdateStrategy;
 
     public PartialTransferCashbackUpdateImplTest() {
-        this.cashbackUpdateStrategy = new PartialTransferCashbackUpdate(winningTransactionDaoMock, citizenRankingDaoMock, beanFactoryMock);
+        this.cashbackUpdateStrategy = new PartialTransferCashbackUpdate(winningTransactionDaoMock, citizenRankingDaoMock, beanFactoryMock, 2);
     }
 
     @Override

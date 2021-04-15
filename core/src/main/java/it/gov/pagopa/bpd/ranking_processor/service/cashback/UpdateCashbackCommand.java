@@ -31,7 +31,6 @@ import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTr
 class UpdateCashbackCommand implements RankingSubProcessCommand {
 
     private final CashbackUpdateStrategyFactory cashbackUpdateStrategyFactory;
-    private final int cashbackUpdateLimit;
     private final int cashbackUpdateRetry;
     private final CitizenRankingDao citizenRankingDao;
 
@@ -39,13 +38,12 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
     @Autowired
     public UpdateCashbackCommand(CashbackUpdateStrategyFactory cashbackUpdateStrategyFactory,
                                  CitizenRankingDao citizenRankingDao,
-                                 @Value("${cashback-update.data-extraction.limit}") int cashbackUpdateLimit,
                                  @Value("${cashback-update.retry.limit}") Integer cashbackUpdateRetry) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateCashbackCommand.UpdateCashbackCommand");
         }
         if (log.isDebugEnabled()) {
-            log.debug("cashbackUpdateStrategyFactory = {}, citizenRankingDao = {}, cashbackUpdateLimit = {}, cashbackUpdateDeadlockRetry = {}", cashbackUpdateStrategyFactory, citizenRankingDao, cashbackUpdateLimit, cashbackUpdateRetry);
+            log.debug("cashbackUpdateStrategyFactory = {}, citizenRankingDao = {}, cashbackUpdateDeadlockRetry = {}", cashbackUpdateStrategyFactory, citizenRankingDao, cashbackUpdateRetry);
         }
         if (cashbackUpdateRetry != null && cashbackUpdateRetry < 0) {
             throw new IllegalArgumentException("retry limit must be a positive integer");
@@ -53,7 +51,6 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
 
         this.cashbackUpdateStrategyFactory = cashbackUpdateStrategyFactory;
         this.citizenRankingDao = citizenRankingDao;
-        this.cashbackUpdateLimit = cashbackUpdateLimit;
         this.cashbackUpdateRetry = cashbackUpdateRetry == null ? Integer.MAX_VALUE : cashbackUpdateRetry;
     }
 
@@ -109,10 +106,10 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
             log.info("skip {}", getUpdateRankingSubProcess(trxType));
 
         } else {
-            int trxCount = cashbackUpdateLimit;
-            while (trxCount == cashbackUpdateLimit && !isToStop.test(stopDateTime)) {
+            int trxCount = cashbackUpdateStrategy.getDataExtractionLimit();
+            while (trxCount == cashbackUpdateStrategy.getDataExtractionLimit() && !isToStop.test(stopDateTime)) {
 
-                SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateLimit);
+                SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateStrategy.getDataExtractionLimit());
                 log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
 
                 int retryCount = 0;

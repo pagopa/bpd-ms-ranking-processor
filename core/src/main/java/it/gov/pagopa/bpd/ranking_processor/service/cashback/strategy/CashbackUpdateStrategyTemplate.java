@@ -97,7 +97,7 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
     }
 
 
-    protected abstract List<WinningTransaction> retrieveTransactions(long awardPeriodId, Pageable pageRequest);
+    protected abstract List<WinningTransaction> retrieveTransactions(long awardPeriodId, Pageable pageable);
 
 
     private void checkErrors(int statementsCount, int[] affectedRows, String operationName) {
