@@ -38,7 +38,7 @@ public class RankingProcessorServiceImplTest {
             subProcessesMock.add(Mockito.mock(RankingSubProcessCommand.class));
         }
 
-        rankingProcessorService = new RankingProcessorServiceImpl(restClientMock, subProcessesMock);
+        rankingProcessorService = new RankingProcessorServiceImpl(restClientMock, subProcessesMock, null);
     }
 
     private static AwardPeriod buildAwardPeriod(int bias) {

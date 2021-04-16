@@ -4,6 +4,8 @@ import it.gov.pagopa.bpd.ranking_processor.connector.award_period.AwardPeriodRes
 import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -16,13 +18,18 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
 
     private final AwardPeriodRestClient awardPeriodRestClient;
     private final List<RankingSubProcessCommand> subProcesses;
+    private final LocalDateTime stopDateTime;
 
 
     @Autowired
     public RankingProcessorServiceImpl(AwardPeriodRestClient awardPeriodRestClient,
-                                       List<RankingSubProcessCommand> subProcesses) {
+                                       List<RankingSubProcessCommand> subProcesses,
+                                       @Value("${ranking-processor.stop-date-time}")
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                                               LocalDateTime stopDateTime) {
         this.awardPeriodRestClient = awardPeriodRestClient;
         this.subProcesses = subProcesses;
+        this.stopDateTime = stopDateTime;
     }
 
 
@@ -31,7 +38,7 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
         log.info("RankingProcessorServiceImpl.execute start");
 
         List<AwardPeriod> activeAwardPeriods = awardPeriodRestClient.getActiveAwardPeriods();
-        activeAwardPeriods.forEach(awardPeriod -> process(awardPeriod, null));
+        activeAwardPeriods.forEach(awardPeriod -> process(awardPeriod, stopDateTime));
 
         log.info("RankingProcessorServiceImpl.execute end");
     }
