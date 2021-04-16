@@ -8,7 +8,7 @@ import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
  */
 public interface RankingUpdateStrategy {
 
-    int process(long awardPeriodId, SimplePageRequest simplePageRequest);
+    int process(AwardPeriod awardPeriod, SimplePageRequest simplePageRequest);
 
     void updateRankingExt(AwardPeriod awardPeriod);
 

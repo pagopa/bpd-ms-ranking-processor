@@ -44,6 +44,7 @@ public interface CitizenRankingDao {
         UPDATE_CASHBACK_TOTAL_TRANSFER,
         UPDATE_CASHBACK_PARTIAL_TRANSFER,
         UPDATE_RANKING,
+        UPDATE_RANKING_EXT,
         UPDATE_REDIS;
     }
 }

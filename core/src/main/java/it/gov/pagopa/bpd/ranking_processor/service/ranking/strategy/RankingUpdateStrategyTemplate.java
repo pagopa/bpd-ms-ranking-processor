@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.*;
 
+import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.UPDATE_RANKING_EXT;
+
 /**
  * Template Method pattern of {@link RankingUpdateStrategy}
  */
@@ -27,34 +29,35 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
     protected static final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing(CitizenRanking::getFiscalCode);
 
     protected final MutableInt lastAssignedRanking = new MutableInt(0);
+    protected int minTransactionNumber;
 
     private Integer maxTransactionNumber;
-    private Integer minTransactionNumber;
     private final CitizenRankingDao citizenRankingDao;
     /**
      * A set of latest (in terms of ranking) ties. Required to manage ties between each chunks
      */
     private Set<CitizenRanking> lastTies = Collections.emptySet();
+    private boolean updateRankingFailed;
 
     @Override
     @Transactional("citizenTransactionManager")
-    public int process(long awardPeriodId, SimplePageRequest simplePageRequest) {
+    public int process(AwardPeriod awardPeriod, SimplePageRequest simplePageRequest) {
         if (log.isTraceEnabled()) {
             log.trace("RankingUpdateStrategyTemplate.process");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, simplePageRequest = {}", awardPeriodId, simplePageRequest);
+            log.debug("awardPeriodId = {}, simplePageRequest = {}", awardPeriod, simplePageRequest);
         }
 
         Pageable pageRequest = PageRequest.of(simplePageRequest.getPage(),
                 simplePageRequest.getSize(),
                 CitizenRankingDao.FIND_ALL_PAGEABLE_SORT);
-        List<CitizenRanking> citizenRankings = citizenRankingDao.findAll(awardPeriodId, pageRequest);
+        List<CitizenRanking> citizenRankings = citizenRankingDao.findAll(awardPeriod.getAwardPeriodId(), pageRequest);
         int totalExtractedRankings = citizenRankings.size();
 
         citizenRankings.addAll(lastTies);
         NavigableMap<Long, Set<CitizenRanking>> tiedMap = aggregateData(citizenRankings);
-        setRanking(tiedMap);
+        setRanking(tiedMap, awardPeriod);
 
         if (lastAssignedRanking.intValue() != pageRequest.getOffset() + totalExtractedRankings) {
             throw new IllegalStateException(String.format("Size of processed ranking records (%d) differs from the extracted one (%d)",
@@ -63,20 +66,26 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
         }
 
         int[] affectedRows = citizenRankingDao.updateRanking(citizenRankings);
-        checkErrors(citizenRankings.size(), affectedRows);
 
-        lastTies = tiedMap.lastEntry().getValue();
+        try {
+            checkErrors(citizenRankings.size(), affectedRows);
+
+        } catch (RankingUpdateException e) {
+            updateRankingFailed = true;
+            throw e;
+        }
+
         lastAssignedRanking.subtract(lastTies.size());
+        lastTies = tiedMap.lastEntry().getValue();
 
         if (maxTransactionNumber == null) {
             maxTransactionNumber = tiedMap.firstKey().intValue();
         }
-        minTransactionNumber = tiedMap.lastKey().intValue();
 
         return totalExtractedRankings;
     }
 
-    protected abstract void setRanking(Map<Long, Set<CitizenRanking>> tiedMap);
+    protected abstract void setRanking(Map<Long, Set<CitizenRanking>> tiedMap, AwardPeriod awardPeriod);
 
 
     public RankingUpdateStrategyTemplate(CitizenRankingDao citizenRankingDao) {
@@ -129,33 +138,37 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
         }
 
         if (maxTransactionNumber == null) {
-            throw new IllegalStateException("updateRankingExt must be called after updateRanking");
-        }
+            log.info("skip {}", UPDATE_RANKING_EXT);
 
-        CitizenRankingExt rankingExt = CitizenRankingExt.builder()
-                .awardPeriodId(awardPeriod.getAwardPeriodId())
-                .minPosition(awardPeriod.getMinPosition())
-                .maxPeriodCashback(awardPeriod.getMaxPeriodCashback())
-                .totalParticipants(lastAssignedRanking.longValue())
-                .minTransactionNumber(minTransactionNumber.longValue())
-                .maxTransactionNumber(maxTransactionNumber.longValue())
-                .updateDate(OffsetDateTime.now())
-                .updateUser(RankingProcessorService.PROCESS_NAME)
-                .build();
+        } else {
+            CitizenRankingExt rankingExt = CitizenRankingExt.builder()
+                    .awardPeriodId(awardPeriod.getAwardPeriodId())
+                    .minPosition(awardPeriod.getMinPosition())
+                    .maxPeriodCashback(awardPeriod.getMaxPeriodCashback())
+                    .totalParticipants(updateRankingFailed ? null : lastAssignedRanking.longValue())
+                    .minTransactionNumber(updateRankingFailed && lastAssignedRanking.longValue() < awardPeriod.getMinPosition()
+                            ? null
+                            : (long) minTransactionNumber)
+                    .maxTransactionNumber(maxTransactionNumber.longValue())
+                    .updateDate(OffsetDateTime.now())
+                    .updateUser(RankingProcessorService.PROCESS_NAME)
+                    .build();
 
-        int result = citizenRankingDao.updateRankingExt(rankingExt);
-
-        if (DaoHelper.isStatementResultKO.test(result)) {
-            rankingExt.setInsertDate(rankingExt.getUpdateDate());
-            rankingExt.setInsertUser(rankingExt.getUpdateUser());
-            rankingExt.setUpdateDate(null);
-            rankingExt.setUpdateUser(null);
-            result = citizenRankingDao.insertRankingExt(rankingExt);
+            int result = citizenRankingDao.updateRankingExt(rankingExt);
 
             if (DaoHelper.isStatementResultKO.test(result)) {
-                throw new RankingUpdateException("failed to update citizen_ranking_ext");
+                rankingExt.setInsertDate(rankingExt.getUpdateDate());
+                rankingExt.setInsertUser(rankingExt.getUpdateUser());
+                rankingExt.setUpdateDate(null);
+                rankingExt.setUpdateUser(null);
+                result = citizenRankingDao.insertRankingExt(rankingExt);
+
+                if (DaoHelper.isStatementResultKO.test(result)) {
+                    throw new RankingUpdateException("failed to update citizen_ranking_ext");
+                }
             }
         }
+
     }
 
 }

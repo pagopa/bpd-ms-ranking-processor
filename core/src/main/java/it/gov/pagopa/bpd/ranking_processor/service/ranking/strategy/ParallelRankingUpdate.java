@@ -1,5 +1,6 @@
 package it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy;
 
+import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
@@ -38,7 +39,7 @@ public class ParallelRankingUpdate extends RankingUpdateStrategyTemplate {
 
 
     @Override
-    protected void setRanking(Map<Long, Set<CitizenRanking>> tiedMap) {
+    protected void setRanking(Map<Long, Set<CitizenRanking>> tiedMap, AwardPeriod awardPeriod) {
         if (log.isTraceEnabled()) {
             log.trace("ParallelRankingUpdate.setRanking");
         }
@@ -58,6 +59,10 @@ public class ParallelRankingUpdate extends RankingUpdateStrategyTemplate {
                         citizenRanking.setRanking((long) i);
                         citizenRanking.setUpdateDate(now);
                         citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
+                        if (citizenRanking.getRanking() <= awardPeriod.getMinPosition()
+                                && minTransactionNumber < citizenRanking.getTransactionNumber()) {
+                            minTransactionNumber = citizenRanking.getTransactionNumber().intValue();
+                        }
                     });
             lastAssignedRanking.add(tiesArray.length);
         }
