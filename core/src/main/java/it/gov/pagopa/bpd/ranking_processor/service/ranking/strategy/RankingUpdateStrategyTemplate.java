@@ -9,7 +9,6 @@ import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import it.gov.pagopa.bpd.ranking_processor.service.ranking.RankingUpdateException;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +28,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
     static final String ERROR_MESSAGE_TEMPLATE = "updateRanking: affected %d rows of %d";
     protected static final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing(CitizenRanking::getFiscalCode);
 
-    protected final MutableInt lastAssignedRanking = new MutableInt(0);
+    protected int lastAssignedRanking;
     protected final AtomicInteger minTransactionNumber = new AtomicInteger(Integer.MAX_VALUE);
 
     private Integer maxTransactionNumber;
@@ -60,9 +59,9 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
         NavigableMap<Long, Set<CitizenRanking>> tiedMap = aggregateData(citizenRankings);
         setRanking(tiedMap, awardPeriod);
 
-        if (lastAssignedRanking.intValue() != pageRequest.getOffset() + totalExtractedRankings) {
+        if (lastAssignedRanking != pageRequest.getOffset() + totalExtractedRankings) {
             throw new IllegalStateException(String.format("Size of processed ranking records (%d) differs from the extracted one (%d)",
-                    lastAssignedRanking.intValue(),
+                    lastAssignedRanking,
                     pageRequest.getOffset() + totalExtractedRankings));
         }
 
@@ -76,7 +75,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
             throw e;
         }
 
-        lastAssignedRanking.subtract(lastTies.size());
+        lastAssignedRanking -= lastTies.size();
         lastTies = tiedMap.lastEntry().getValue();
 
         if (maxTransactionNumber == null) {
@@ -146,8 +145,8 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
                     .awardPeriodId(awardPeriod.getAwardPeriodId())
                     .minPosition(awardPeriod.getMinPosition())
                     .maxPeriodCashback(awardPeriod.getMaxPeriodCashback())
-                    .totalParticipants(updateRankingFailed ? null : lastAssignedRanking.longValue())
-                    .minTransactionNumber(updateRankingFailed && lastAssignedRanking.longValue() < awardPeriod.getMinPosition()
+                    .totalParticipants(updateRankingFailed ? null : (long) lastAssignedRanking)
+                    .minTransactionNumber(updateRankingFailed && lastAssignedRanking < awardPeriod.getMinPosition()
                             ? null
                             : minTransactionNumber.longValue())
                     .maxTransactionNumber(maxTransactionNumber.longValue())

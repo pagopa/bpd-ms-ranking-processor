@@ -50,7 +50,7 @@ public class ParallelRankingUpdate extends RankingUpdateStrategyTemplate {
         OffsetDateTime now = OffsetDateTime.now();
         for (Set<CitizenRanking> ties : tiedMap.values()) {
 
-            int startRankingChunk = lastAssignedRanking.getValue() + 1;
+            int startRankingChunk = lastAssignedRanking + 1;
             CitizenRanking[] tiesArray = ties.toArray(new CitizenRanking[ties.size()]);
             IntStream.range(startRankingChunk, startRankingChunk + tiesArray.length)
                     .parallel()
@@ -68,7 +68,7 @@ public class ParallelRankingUpdate extends RankingUpdateStrategyTemplate {
                             });
                         }
                     });
-            lastAssignedRanking.add(tiesArray.length);
+            lastAssignedRanking += tiesArray.length;
         }
     }
 

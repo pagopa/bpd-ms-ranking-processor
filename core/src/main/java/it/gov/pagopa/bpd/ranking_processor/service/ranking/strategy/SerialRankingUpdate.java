@@ -48,7 +48,7 @@ public class SerialRankingUpdate extends RankingUpdateStrategyTemplate {
         for (Set<CitizenRanking> ties : tiedMap.values()) {
 
             for (CitizenRanking citizenRanking : ties) {
-                citizenRanking.setRanking((long) lastAssignedRanking.incrementAndGet());
+                citizenRanking.setRanking((long) ++lastAssignedRanking);
                 citizenRanking.setUpdateDate(now);
                 citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
 
