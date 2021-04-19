@@ -84,7 +84,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
                 rankingTableName);
         updateRankingSql = String.format("update %s bcr set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)",
                 rankingTableName);
-        updateRankingExtSql = String.format("update %s set total_participants = :totalParticipants, min_transaction_n = :minTransactionNumber, max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId",
+        updateRankingExtSql = String.format("update %s set ${TOTAL_PARTECIPANTS} ${MIN_TRANSACTION} max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId",
                 rankingExtTableName);
     }
 
@@ -133,8 +133,17 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
             log.debug("rankingExt = {}", rankingExt);
         }
 
+        String query = updateRankingExtSql.replace("${TOTAL_PARTECIPANTS}",
+                rankingExt.getTotalParticipants() == null
+                        ? ""
+                        : "total_participants = :totalParticipants,");
+        query = query.replace("${MIN_TRANSACTION}",
+                rankingExt.getMinTransactionNumber() == null
+                        ? ""
+                        : "min_transaction_n = :minTransactionNumber,");
+
         SqlParameterSource parameters = new BeanPropertySqlParameterSource(rankingExt);
-        return namedParameterJdbcTemplate.update(updateRankingExtSql, parameters);
+        return namedParameterJdbcTemplate.update(query, parameters);
     }
 
     @Override

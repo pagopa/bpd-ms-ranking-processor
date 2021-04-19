@@ -5,6 +5,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.LoggingEvent;
 import ch.qos.logback.core.Appender;
 import eu.sia.meda.util.TestUtils;
+import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
@@ -21,7 +22,6 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 
-import static it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy.RankingUpdateStrategyTemplate.ERROR_MESSAGE_TEMPLATE;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -91,12 +91,12 @@ public abstract class RankingUpdateStrategyTemplateTest {
     @Test
     public void process_OK() {
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
-        int processedTrxCount = getRankingUpdateService().process(awardPeriodId, pageRequest);
+        AwardPeriod awardPeriod = AwardPeriod.builder().awardPeriodId(1L).minPosition(2L).build();
+        int processedTrxCount = getRankingUpdateService().process(awardPeriod, pageRequest);
 
         Assert.assertSame(LIMIT, processedTrxCount);
         BDDMockito.verify(citizenRankingDaoMock, times(1))
-                .findAll(eq(awardPeriodId), eq(toPageable(pageRequest)));
+                .findAll(eq(awardPeriod.getAwardPeriodId()), eq(toPageable(pageRequest)));
         BDDMockito.verify(citizenRankingDaoMock, times(1))
                 .updateRanking(anyList());
         verifyNoMoreInteractions(citizenRankingDaoMock);
@@ -110,23 +110,15 @@ public abstract class RankingUpdateStrategyTemplateTest {
     public void process_KO_cashbackUpdateMiss() {
         missRecords = MissRecord.UPDATE_RANKING;
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
+        AwardPeriod awardPeriod = AwardPeriod.builder().awardPeriodId(1L).minPosition(2L).build();
 
         try {
-            getRankingUpdateService().process(awardPeriodId, pageRequest);
+            getRankingUpdateService().process(awardPeriod, pageRequest);
 
         } catch (RankingUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
-            Optional<LoggingEvent> errorEvent = loggingEventCaptor.getAllValues()
-                    .stream()
-                    .filter(loggingEvent -> Level.ERROR.equals(loggingEvent.getLevel()))
-                    .filter(loggingEvent -> String.format(ERROR_MESSAGE_TEMPLATE,
-                            LIMIT - 1,
-                            LIMIT).equals(loggingEvent.getFormattedMessage()))
-                    .findAny();
-            Assert.assertTrue(errorEvent.isPresent());
             BDDMockito.verify(citizenRankingDaoMock, times(1))
-                    .findAll(eq(awardPeriodId), eq(toPageable(pageRequest)));
+                    .findAll(eq(awardPeriod.getAwardPeriodId()), eq(toPageable(pageRequest)));
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateRanking(anyList());
             verifyNoMoreInteractions(citizenRankingDaoMock);
@@ -139,23 +131,15 @@ public abstract class RankingUpdateStrategyTemplateTest {
     public void process_KO_cashbackUpdateError() {
         error = Error.UPDATE_RANKING;
         SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
-        long awardPeriodId = 1L;
+        AwardPeriod awardPeriod = AwardPeriod.builder().awardPeriodId(1L).minPosition(2L).build();
 
         try {
-            getRankingUpdateService().process(awardPeriodId, pageRequest);
+            getRankingUpdateService().process(awardPeriod, pageRequest);
 
         } catch (RankingUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
-            Optional<LoggingEvent> errorEvent = loggingEventCaptor.getAllValues()
-                    .stream()
-                    .filter(loggingEvent -> Level.ERROR.equals(loggingEvent.getLevel()))
-                    .filter(loggingEvent -> String.format(ERROR_MESSAGE_TEMPLATE,
-                            LIMIT - 1,
-                            LIMIT).equals(loggingEvent.getFormattedMessage()))
-                    .findAny();
-            Assert.assertTrue(errorEvent.isPresent());
             BDDMockito.verify(citizenRankingDaoMock, times(1))
-                    .findAll(eq(awardPeriodId), eq(toPageable(pageRequest)));
+                    .findAll(eq(awardPeriod.getAwardPeriodId()), eq(toPageable(pageRequest)));
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateRanking(anyList());
             verifyNoMoreInteractions(citizenRankingDaoMock);
