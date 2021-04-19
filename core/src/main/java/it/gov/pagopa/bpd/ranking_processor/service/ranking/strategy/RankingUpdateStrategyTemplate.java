@@ -29,15 +29,31 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
     protected static final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing(CitizenRanking::getFiscalCode);
 
     protected int lastAssignedRanking;
-    protected final AtomicInteger minTransactionNumber = new AtomicInteger(Integer.MAX_VALUE);
+    protected final AtomicInteger lastMinTransactionNumber = new AtomicInteger(Integer.MAX_VALUE);
 
     private Integer maxTransactionNumber;
+    private int minTransactionNumber;
+    private int totalParticipants;
     private final CitizenRankingDao citizenRankingDao;
     /**
      * A set of latest (in terms of ranking) ties. Required to manage ties between each chunks
      */
     private Set<CitizenRanking> lastTies = Collections.emptySet();
     private boolean updateRankingFailed;
+
+    protected abstract void setRanking(Map<Long, Set<CitizenRanking>> tiedMap, AwardPeriod awardPeriod);
+
+
+    public RankingUpdateStrategyTemplate(CitizenRankingDao citizenRankingDao) {
+        if (log.isTraceEnabled()) {
+            log.trace("RankingUpdateStrategyTemplate.RankingUpdateStrategyTemplate");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("citizenRankingDao = {}", citizenRankingDao);
+        }
+
+        this.citizenRankingDao = citizenRankingDao;
+    }
 
     @Override
     @Transactional("citizenTransactionManager")
@@ -75,28 +91,16 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
             throw e;
         }
 
-        lastAssignedRanking -= lastTies.size();
         lastTies = tiedMap.lastEntry().getValue();
+        totalParticipants = lastAssignedRanking;
+        lastAssignedRanking -= lastTies.size();
 
         if (maxTransactionNumber == null) {
             maxTransactionNumber = tiedMap.firstKey().intValue();
         }
+        minTransactionNumber = lastMinTransactionNumber.get();
 
         return totalExtractedRankings;
-    }
-
-    protected abstract void setRanking(Map<Long, Set<CitizenRanking>> tiedMap, AwardPeriod awardPeriod);
-
-
-    public RankingUpdateStrategyTemplate(CitizenRankingDao citizenRankingDao) {
-        if (log.isTraceEnabled()) {
-            log.trace("RankingUpdateStrategyTemplate.RankingUpdateStrategyTemplate");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("citizenRankingDao = {}", citizenRankingDao);
-        }
-
-        this.citizenRankingDao = citizenRankingDao;
     }
 
     protected abstract NavigableMap<Long, Set<CitizenRanking>> aggregateData(List<CitizenRanking> citizenRankings);
@@ -111,7 +115,6 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
         if (affectedRows.length != statementsCount) {
             String message = String.format(ERROR_MESSAGE_TEMPLATE, affectedRows.length, statementsCount);
-            log.error(message);
             throw new RankingUpdateException(message);
 
         } else {
@@ -121,7 +124,6 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
             if (failedUpdateCount > 0) {
                 String message = String.format(ERROR_MESSAGE_TEMPLATE, statementsCount - failedUpdateCount, statementsCount);
-                log.error(message);
                 throw new RankingUpdateException(message);
             }
         }
@@ -145,10 +147,10 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
                     .awardPeriodId(awardPeriod.getAwardPeriodId())
                     .minPosition(awardPeriod.getMinPosition())
                     .maxPeriodCashback(awardPeriod.getMaxPeriodCashback())
-                    .totalParticipants(updateRankingFailed ? null : (long) lastAssignedRanking)
-                    .minTransactionNumber(updateRankingFailed && lastAssignedRanking < awardPeriod.getMinPosition()
+                    .totalParticipants(updateRankingFailed ? null : (long) totalParticipants)
+                    .minTransactionNumber(updateRankingFailed && totalParticipants < awardPeriod.getMinPosition()
                             ? null
-                            : minTransactionNumber.longValue())
+                            : (long) minTransactionNumber)
                     .maxTransactionNumber(maxTransactionNumber.longValue())
                     .updateDate(OffsetDateTime.now())
                     .updateUser(RankingProcessorService.PROCESS_NAME)
