@@ -22,7 +22,6 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 
-import static it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy.RankingUpdateStrategyTemplate.ERROR_MESSAGE_TEMPLATE;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -118,14 +117,6 @@ public abstract class RankingUpdateStrategyTemplateTest {
 
         } catch (RankingUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
-            Optional<LoggingEvent> errorEvent = loggingEventCaptor.getAllValues()
-                    .stream()
-                    .filter(loggingEvent -> Level.ERROR.equals(loggingEvent.getLevel()))
-                    .filter(loggingEvent -> String.format(ERROR_MESSAGE_TEMPLATE,
-                            LIMIT - 1,
-                            LIMIT).equals(loggingEvent.getFormattedMessage()))
-                    .findAny();
-            Assert.assertTrue(errorEvent.isPresent());
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .findAll(eq(awardPeriod.getAwardPeriodId()), eq(toPageable(pageRequest)));
             BDDMockito.verify(citizenRankingDaoMock, times(1))
@@ -147,14 +138,6 @@ public abstract class RankingUpdateStrategyTemplateTest {
 
         } catch (RankingUpdateException e) {
             verify(mockedAppender, atLeast(1)).doAppend(loggingEventCaptor.capture());
-            Optional<LoggingEvent> errorEvent = loggingEventCaptor.getAllValues()
-                    .stream()
-                    .filter(loggingEvent -> Level.ERROR.equals(loggingEvent.getLevel()))
-                    .filter(loggingEvent -> String.format(ERROR_MESSAGE_TEMPLATE,
-                            LIMIT - 1,
-                            LIMIT).equals(loggingEvent.getFormattedMessage()))
-                    .findAny();
-            Assert.assertTrue(errorEvent.isPresent());
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .findAll(eq(awardPeriod.getAwardPeriodId()), eq(toPageable(pageRequest)));
             BDDMockito.verify(citizenRankingDaoMock, times(1))
