@@ -53,7 +53,7 @@ public class SerialRankingUpdate extends RankingUpdateStrategyTemplate {
                 citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
 
                 if (citizenRanking.getRanking() <= awardPeriod.getMinPosition()) {
-                    minTransactionNumber = citizenRanking.getTransactionNumber().intValue();
+                    minTransactionNumber.set(citizenRanking.getTransactionNumber().intValue());
                 }
             }
         }

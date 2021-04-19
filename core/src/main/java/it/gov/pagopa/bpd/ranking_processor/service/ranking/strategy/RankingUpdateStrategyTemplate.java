@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.UPDATE_RANKING_EXT;
 
@@ -29,7 +30,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
     protected static final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing(CitizenRanking::getFiscalCode);
 
     protected final MutableInt lastAssignedRanking = new MutableInt(0);
-    protected int minTransactionNumber;
+    protected final AtomicInteger minTransactionNumber = new AtomicInteger(Integer.MAX_VALUE);
 
     private Integer maxTransactionNumber;
     private final CitizenRankingDao citizenRankingDao;
@@ -148,7 +149,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
                     .totalParticipants(updateRankingFailed ? null : lastAssignedRanking.longValue())
                     .minTransactionNumber(updateRankingFailed && lastAssignedRanking.longValue() < awardPeriod.getMinPosition()
                             ? null
-                            : (long) minTransactionNumber)
+                            : minTransactionNumber.longValue())
                     .maxTransactionNumber(maxTransactionNumber.longValue())
                     .updateDate(OffsetDateTime.now())
                     .updateUser(RankingProcessorService.PROCESS_NAME)

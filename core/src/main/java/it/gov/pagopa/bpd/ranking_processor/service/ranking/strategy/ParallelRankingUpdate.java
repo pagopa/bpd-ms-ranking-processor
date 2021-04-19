@@ -59,9 +59,13 @@ public class ParallelRankingUpdate extends RankingUpdateStrategyTemplate {
                         citizenRanking.setRanking((long) i);
                         citizenRanking.setUpdateDate(now);
                         citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
-                        if (citizenRanking.getRanking() <= awardPeriod.getMinPosition()
-                                && minTransactionNumber < citizenRanking.getTransactionNumber()) {
-                            minTransactionNumber = citizenRanking.getTransactionNumber().intValue();
+                        if (citizenRanking.getRanking() <= awardPeriod.getMinPosition()) {
+                            minTransactionNumber.updateAndGet(operand -> {
+                                if (citizenRanking.getTransactionNumber() < operand)
+                                    return citizenRanking.getTransactionNumber().intValue();
+                                else
+                                    return operand;
+                            });
                         }
                     });
             lastAssignedRanking.add(tiesArray.length);
