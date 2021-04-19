@@ -72,8 +72,13 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
 
     private void managePagination(StringBuilder sql, Pageable pageable) {
         if (pageable != null) {
-            sql.append(" LIMIT ").append(pageable.getPageSize())
-                    .append(" OFFSET ").append(pageable.getOffset());
+            if (!pageable.getSort().isEmpty()) {
+                sql.append(" ORDER BY ").append(pageable.getSort().toString().replace(":", ""));
+            }
+            if (pageable.isPaged()) {
+                sql.append(" LIMIT ").append(pageable.getPageSize())
+                        .append(" OFFSET ").append(pageable.getOffset());
+            }
         }
     }
 
