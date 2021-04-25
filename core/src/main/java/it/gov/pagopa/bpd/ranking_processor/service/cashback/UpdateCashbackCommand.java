@@ -118,6 +118,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
 
         } else {
             int trxCount = cashbackUpdateStrategy.getDataExtractionLimit();
+
             while (trxCount == cashbackUpdateStrategy.getDataExtractionLimit() && !isToStop.test(stopDateTime)) {
 
                 SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateStrategy.getDataExtractionLimit());
@@ -131,8 +132,11 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
                         break;
 
                     } catch (DeadlockLoserDataAccessException | DuplicateKeyException e) {
-                        log.warn(e.getMessage());
-                        retryCount++;
+                        if (++retryCount < cashbackUpdateRetry) {
+                            log.warn(e.getMessage());
+                        } else {
+                            throw new CashbackUpdateException("Exceeded max retry number");
+                        }
                     }
                 }
 

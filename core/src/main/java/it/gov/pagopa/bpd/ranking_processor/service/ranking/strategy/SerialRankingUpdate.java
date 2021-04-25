@@ -10,7 +10,6 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,12 +43,11 @@ public class SerialRankingUpdate extends RankingUpdateStrategyTemplate {
             log.debug("tiedMap = {}", tiedMap);
         }
 
-        OffsetDateTime now = OffsetDateTime.now();
         for (Set<CitizenRanking> ties : tiedMap.values()) {
 
             for (CitizenRanking citizenRanking : ties) {
                 citizenRanking.setRanking((long) ++lastAssignedRanking);
-                citizenRanking.setUpdateDate(now);
+                citizenRanking.setUpdateDate(startProcess);
                 citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
 
                 if (citizenRanking.getRanking() <= awardPeriod.getMinPosition()) {

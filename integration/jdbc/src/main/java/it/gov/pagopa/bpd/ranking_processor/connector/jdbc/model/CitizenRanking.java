@@ -1,9 +1,6 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model;
 
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.*;
 import org.springframework.data.relational.core.mapping.Column;
 
 import java.math.BigDecimal;
@@ -33,5 +30,13 @@ public class CitizenRanking {
     private OffsetDateTime updateDate;
     @Column("update_user_s")
     private String updateUser;
+
+
+    @Data
+    @AllArgsConstructor
+    public static class FilterCriteria {
+        private Long awardPeriodId;
+        private OffsetDateTime updateDate;
+    }
 
 }

@@ -19,6 +19,7 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -77,7 +78,8 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                 .thenReturn(Collections.emptyList());
 
         PageRequest pageRequest = PageRequest.of(0, 1, Sort.Direction.ASC, "pippo");
-        List<CitizenRanking> results = citizenRankingDao.findAll(1L, pageRequest);
+        CitizenRanking.FilterCriteria filterCriteria = new CitizenRanking.FilterCriteria(1L, OffsetDateTime.now());
+        List<CitizenRanking> results = citizenRankingDao.findAll(filterCriteria, pageRequest);
 
         Assert.assertNotNull(results);
     }
@@ -87,7 +89,8 @@ public class CitizenRankingDaoImplTest extends BaseTest {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        List<CitizenRanking> results = citizenRankingDao.findAll(1L, (Pageable) null);
+        CitizenRanking.FilterCriteria filterCriteria = new CitizenRanking.FilterCriteria(1L, OffsetDateTime.now());
+        List<CitizenRanking> results = citizenRankingDao.findAll(filterCriteria, (Pageable) null);
 
         Assert.assertNotNull(results);
     }

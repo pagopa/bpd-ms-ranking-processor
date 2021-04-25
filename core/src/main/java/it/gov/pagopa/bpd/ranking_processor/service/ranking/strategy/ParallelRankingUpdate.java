@@ -10,7 +10,6 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
@@ -47,7 +46,6 @@ public class ParallelRankingUpdate extends RankingUpdateStrategyTemplate {
             log.debug("tiedMap = {}", tiedMap);
         }
 
-        OffsetDateTime now = OffsetDateTime.now();
         for (Set<CitizenRanking> ties : tiedMap.values()) {
 
             int startRankingChunk = lastAssignedRanking + 1;
@@ -57,7 +55,7 @@ public class ParallelRankingUpdate extends RankingUpdateStrategyTemplate {
                     .forEach(i -> {
                         CitizenRanking citizenRanking = tiesArray[i - startRankingChunk];
                         citizenRanking.setRanking((long) i);
-                        citizenRanking.setUpdateDate(now);
+                        citizenRanking.setUpdateDate(startProcess);
                         citizenRanking.setUpdateUser(RankingProcessorService.PROCESS_NAME);
                         if (citizenRanking.getRanking() <= awardPeriod.getMinPosition()) {
                             lastMinTransactionNumber.updateAndGet(operand -> {

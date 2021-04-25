@@ -29,6 +29,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
     protected static final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing(CitizenRanking::getFiscalCode);
 
     protected int lastAssignedRanking;
+    protected final OffsetDateTime startProcess;
     protected final AtomicInteger lastMinTransactionNumber = new AtomicInteger(Integer.MAX_VALUE);
 
     private Integer maxTransactionNumber;
@@ -53,6 +54,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
         }
 
         this.citizenRankingDao = citizenRankingDao;
+        this.startProcess = OffsetDateTime.now();
     }
 
     @Override
@@ -68,18 +70,19 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
         Pageable pageRequest = PageRequest.of(simplePageRequest.getPage(),
                 simplePageRequest.getSize(),
                 CitizenRankingDao.FIND_ALL_PAGEABLE_SORT);
-        List<CitizenRanking> citizenRankings = citizenRankingDao.findAll(awardPeriod.getAwardPeriodId(), pageRequest);
+        CitizenRanking.FilterCriteria filterCriteria = new CitizenRanking.FilterCriteria(awardPeriod.getAwardPeriodId(), startProcess);
+        List<CitizenRanking> citizenRankings = citizenRankingDao.findAll(filterCriteria, pageRequest);
         int totalExtractedRankings = citizenRankings.size();
 
         citizenRankings.addAll(lastTies);
         NavigableMap<Long, Set<CitizenRanking>> tiedMap = aggregateData(citizenRankings);
         setRanking(tiedMap, awardPeriod);
 
-        if (lastAssignedRanking != pageRequest.getOffset() + totalExtractedRankings) {
-            throw new IllegalStateException(String.format("Size of processed ranking records (%d) differs from the extracted one (%d)",
-                    lastAssignedRanking,
-                    pageRequest.getOffset() + totalExtractedRankings));
-        }
+//        if (lastAssignedRanking != pageRequest.getOffset() + totalExtractedRankings) {
+//            throw new IllegalStateException(String.format("Size of processed ranking records (%d) differs from the extracted one (%d)",
+//                    lastAssignedRanking,
+//                    pageRequest.getOffset() + totalExtractedRankings));
+//        }
 
         int[] affectedRows = citizenRankingDao.updateRanking(citizenRankings);
 

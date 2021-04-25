@@ -23,6 +23,7 @@ import java.lang.reflect.Field;
 import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Collection;
@@ -39,7 +40,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     private final String updateCashbackSql;
     private final String updateRankingSql;
     private final String updateRankingExtSql;
-    private final String findAllOrderedByTrxNumSql;
+    private final String findAllByAwardPeriodAndUpdateDateSql;
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final RowMapperResultSetExtractor<CitizenRanking> findAllResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
@@ -80,9 +81,9 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
 
         updateCashbackSql = String.format("update %s bcr set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)",
                 rankingTableName);
-        findAllOrderedByTrxNumSql = String.format("select fiscal_code_c, award_period_id_n, transaction_n, cashback_n, ranking_n from %s where award_period_id_n = ?",
+        findAllByAwardPeriodAndUpdateDateSql = String.format("select bcr.fiscal_code_c, bcr.award_period_id_n, bcr.transaction_n, bcr.cashback_n, bcr.ranking_n from %s bcr inner join bpd_citizen.bpd_citizen bc on bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true where bcr.award_period_id_n = ? and coalesce(bcr.update_date_t,'1900-01-01 00:00:00.000'::timestamptz) < ?",
                 rankingTableName);
-        updateRankingSql = String.format("update %s bcr set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)",
+        updateRankingSql = String.format("update %s bcr set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId",
                 rankingTableName);
         updateRankingExtSql = String.format("update %s set ${TOTAL_PARTECIPANTS} ${MIN_TRANSACTION} max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId",
                 rankingExtTableName);
@@ -147,28 +148,43 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     }
 
     @Override
-    public List<CitizenRanking> findAll(long awardPeriodId, Pageable pageable) {
+    public List<CitizenRanking> findAll(CitizenRanking.FilterCriteria filterCriteria, Pageable pageable) {
         if (log.isTraceEnabled()) {
             log.trace("CitizenRankingDaoImpl.findAll");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
+            log.debug("filterCriteria = {}, pageable = {}", filterCriteria, pageable);
         }
 
-        StringBuilder clauses = new StringBuilder();
+        StringBuilder sql = new StringBuilder(findAllByAwardPeriodAndUpdateDateSql);
+        managePagination(sql, pageable);
+        manageLocking(sql);
+
+        System.out.println(sql.toString());
+
+        return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
+                preparedStatement -> {
+                    preparedStatement.setLong(1, filterCriteria.getAwardPeriodId());
+                    preparedStatement.setTimestamp(2, new Timestamp(filterCriteria.getUpdateDate().toInstant().toEpochMilli()));
+                },
+                findAllResultSetExtractor);
+    }
+
+    private void managePagination(StringBuilder sql, Pageable pageable) {
         if (pageable != null) {
             if (!pageable.getSort().isEmpty()) {
-                clauses.append(" ORDER BY ").append(pageable.getSort().toString().replace(":", ""));
+                sql.append(" ORDER BY ").append(pageable.getSort().toString().replace(":", ""));
             }
             if (pageable.isPaged()) {
-                clauses.append(" LIMIT ").append(pageable.getPageSize())
+                sql.append(" LIMIT ").append(pageable.getPageSize())
                         .append(" OFFSET ").append(pageable.getOffset());
             }
         }
+    }
 
-        return jdbcTemplate.query(connection -> connection.prepareStatement(findAllOrderedByTrxNumSql + clauses),
-                preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
-                findAllResultSetExtractor);
+
+    private void manageLocking(StringBuilder sql) {
+        sql.append(" FOR UPDATE");
     }
 
     @Override
