@@ -13,7 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.UPDATE_CASHBACK;
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.UPDATE_RANKING;
@@ -50,7 +50,7 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
 
 
     @Override
-    public void execute(AwardPeriod awardPeriod, LocalDateTime stopDateTime) {
+    public void execute(AwardPeriod awardPeriod, LocalTime stopTime) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateRankingCommand.execute");
         }
@@ -64,7 +64,7 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
                 checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "register", UPDATE_RANKING));
 
                 try {
-                    exec(awardPeriod, stopDateTime);
+                    exec(awardPeriod, stopTime);
 
                 } catch (RuntimeException e) {
                     log.error(e.getMessage());
@@ -80,12 +80,12 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
     }
 
 
-    private void exec(AwardPeriod awardPeriod, LocalDateTime stopDateTime) {
+    private void exec(AwardPeriod awardPeriod, LocalTime stopTime) {
         int citizensCount = rankingUpdateLimit;
         RankingUpdateStrategy rankingUpdateStrategy = rankingUpdateStrategyFactory.create();
 
         try {
-            while (citizensCount == rankingUpdateLimit && !isToStop.test(stopDateTime)) {
+            while (citizensCount == rankingUpdateLimit && !isToStop.test(stopTime)) {
                 SimplePageRequest pageRequest = SimplePageRequest.of(0, rankingUpdateLimit);
                 log.info("Start {} with page {}", rankingUpdateStrategy.getClass().getSimpleName(), pageRequest);
                 citizensCount = rankingUpdateStrategy.process(awardPeriod, pageRequest);
@@ -96,7 +96,7 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
             log.error(e.getMessage());
         }
 
-        if (!isToStop.test(stopDateTime)) {
+        if (!isToStop.test(stopTime)) {
             rankingUpdateStrategy.updateRankingExt(awardPeriod);
         }
     }

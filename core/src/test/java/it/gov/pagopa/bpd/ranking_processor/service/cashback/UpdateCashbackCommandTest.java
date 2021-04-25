@@ -17,10 +17,13 @@ import static org.mockito.Mockito.*;
 
 public class UpdateCashbackCommandTest {
 
+    public static final int MAX_RETRY = 2;
+
     private static boolean registerWorkerResult;
     private static boolean unregisterWorkerResult;
     private static boolean skipPartialTransfer;
     private static boolean deadLock;
+    private static boolean retry;
     private final UpdateCashbackCommand updateCashbackCommand;
     private final CitizenRankingDao citizenRankingDaoMock;
     private final CashbackUpdateStrategyFactory strategyFactory;
@@ -38,7 +41,7 @@ public class UpdateCashbackCommandTest {
         updateStrategyMock = mock(CashbackUpdateStrategy.class);
         will(invocationOnMock -> {
             if (deadLock) {
-                deadLock = false;
+                deadLock = retry;
                 throw mock(DeadlockLoserDataAccessException.class);
             }
             return 0;
@@ -51,7 +54,7 @@ public class UpdateCashbackCommandTest {
         when(strategyFactory.create(Mockito.any()))
                 .thenReturn(updateStrategyMock);
 
-        updateCashbackCommand = new UpdateCashbackCommand(strategyFactory, citizenRankingDaoMock, null, false);
+        updateCashbackCommand = new UpdateCashbackCommand(strategyFactory, citizenRankingDaoMock, MAX_RETRY, false);
     }
 
     @Before
@@ -60,6 +63,7 @@ public class UpdateCashbackCommandTest {
         unregisterWorkerResult = true;
         skipPartialTransfer = false;
         deadLock = false;
+        retry = false;
     }
 
 
@@ -106,6 +110,32 @@ public class UpdateCashbackCommandTest {
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
         verify(updateStrategyMock, times(3 + 1)).process(any(), any());
+        verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
+        verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
+    }
+
+
+    @Test(expected = CashbackUpdateException.class)
+    public void execute_KoMaxRetry() {
+        deadLock = true;
+        retry = true;
+
+        updateCashbackCommand.execute(null, null);
+
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK), eq(false));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PAYMENT), eq(false));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_TOTAL_TRANSFER), eq(false));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER), eq(true));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_PAYMENT));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PAYMENT));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
+        verify(updateStrategyMock, times(3 + MAX_RETRY)).process(any(), any());
         verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
         verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
     }

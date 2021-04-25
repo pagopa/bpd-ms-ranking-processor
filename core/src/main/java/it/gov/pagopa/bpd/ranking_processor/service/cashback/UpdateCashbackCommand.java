@@ -17,7 +17,7 @@ import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.*;
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType.PARTIAL_TRANSFER;
@@ -60,7 +60,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
 
 
     @Override
-    public void execute(AwardPeriod awardPeriod, LocalDateTime stopDateTime) {
+    public void execute(AwardPeriod awardPeriod, LocalTime stopTime) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateCashbackCommand.execute");
         }
@@ -89,7 +89,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
             registerWorker(getUpdateRankingSubProcess(trxType), PARTIAL_TRANSFER.equals(trxType));
 
             try {
-                exec(awardPeriod, trxType, stopDateTime);
+                exec(awardPeriod, trxType, stopTime);
 
             } catch (RuntimeException e) {
                 log.error(e.getMessage());
@@ -110,7 +110,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
     }
 
 
-    private void exec(AwardPeriod awardPeriod, TransactionType trxType, LocalDateTime stopDateTime) {
+    private void exec(AwardPeriod awardPeriod, TransactionType trxType, LocalTime stopTime) {
         CashbackUpdateStrategy cashbackUpdateStrategy = cashbackUpdateStrategyFactory.create(trxType);
 
         if (cashbackUpdateStrategy == null) {
@@ -119,20 +119,20 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
         } else {
             int trxCount = cashbackUpdateStrategy.getDataExtractionLimit();
 
-            while (trxCount == cashbackUpdateStrategy.getDataExtractionLimit() && !isToStop.test(stopDateTime)) {
+            while (trxCount == cashbackUpdateStrategy.getDataExtractionLimit() && !isToStop.test(stopTime)) {
 
                 SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateStrategy.getDataExtractionLimit());
                 log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
 
                 int retryCount = 0;
-                while (retryCount < cashbackUpdateRetry && !isToStop.test(stopDateTime)) {
+                while (!isToStop.test(stopTime)) {
 
                     try {
                         trxCount = cashbackUpdateStrategy.process(awardPeriod, pageRequest);
                         break;
 
                     } catch (DeadlockLoserDataAccessException | DuplicateKeyException e) {
-                        if (++retryCount < cashbackUpdateRetry) {
+                        if (retryCount++ < cashbackUpdateRetry) {
                             log.warn(e.getMessage());
                         } else {
                             throw new CashbackUpdateException("Exceeded max retry number");

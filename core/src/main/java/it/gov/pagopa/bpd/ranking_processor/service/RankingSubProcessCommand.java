@@ -2,7 +2,7 @@ package it.gov.pagopa.bpd.ranking_processor.service;
 
 import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.function.Predicate;
 
 /**
@@ -10,8 +10,8 @@ import java.util.function.Predicate;
  */
 public interface RankingSubProcessCommand {
 
-    Predicate<LocalDateTime> isToStop = localDateTime -> localDateTime != null && LocalDateTime.now().isAfter(localDateTime);
+    Predicate<LocalTime> isToStop = localTime -> localTime != null && LocalTime.now().isAfter(localTime);
 
-    void execute(AwardPeriod awardPeriod, LocalDateTime stopDateTime);
+    void execute(AwardPeriod awardPeriod, LocalTime stopTime);
 
 }

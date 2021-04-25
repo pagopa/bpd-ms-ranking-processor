@@ -34,7 +34,7 @@ class BpdRankingProcessorControllerImpl extends StatelessController implements B
             log.debug("rankingProcessorDto = {}", rankingProcessorDto);
         }
 
-        rankingProcessorService.process(rankingProcessorDto.getAwardPeriodId(), rankingProcessorDto.getStopDateTime());
+        rankingProcessorService.process(rankingProcessorDto.getAwardPeriodId(), rankingProcessorDto.getStopTime());
 
         log.info("BpdRankingProcessorControllerImpl.execute end");
     }

@@ -9,7 +9,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Slf4j
@@ -18,18 +18,18 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
 
     private final AwardPeriodRestClient awardPeriodRestClient;
     private final List<RankingSubProcessCommand> subProcesses;
-    private final LocalDateTime stopDateTime;
+    private final LocalTime stopTime;
 
 
     @Autowired
     public RankingProcessorServiceImpl(AwardPeriodRestClient awardPeriodRestClient,
                                        List<RankingSubProcessCommand> subProcesses,
-                                       @Value("${ranking-processor.stop-date-time}")
-                                       @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-                                               LocalDateTime stopDateTime) {
+                                       @Value("${ranking-processor.stop-time}")
+                                       @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
+                                               LocalTime stopTime) {
         this.awardPeriodRestClient = awardPeriodRestClient;
         this.subProcesses = subProcesses;
-        this.stopDateTime = stopDateTime;
+        this.stopTime = stopTime;
     }
 
 
@@ -38,12 +38,12 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
         log.info("RankingProcessorServiceImpl.execute start");
 
         List<AwardPeriod> activeAwardPeriods = awardPeriodRestClient.getActiveAwardPeriods();
-        activeAwardPeriods.forEach(awardPeriod -> process(awardPeriod, stopDateTime));
+        activeAwardPeriods.forEach(awardPeriod -> process(awardPeriod, stopTime));
 
         log.info("RankingProcessorServiceImpl.execute end");
     }
 
-    private void process(AwardPeriod awardPeriod, LocalDateTime stopDateTime) {
+    private void process(AwardPeriod awardPeriod, LocalTime stopTime) {
         if (log.isTraceEnabled()) {
             log.trace("RankingProcessorServiceImpl.process");
         }
@@ -55,16 +55,16 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
             throw new IllegalArgumentException("awardPeriod can not be null");
         }
 
-        subProcesses.forEach(command -> command.execute(awardPeriod, stopDateTime));
+        subProcesses.forEach(command -> command.execute(awardPeriod, stopTime));
     }
 
     @Override
-    public void process(Long awardPeriodId, LocalDateTime stopDateTime) {
+    public void process(Long awardPeriodId, LocalTime stopTime) {
         if (log.isTraceEnabled()) {
             log.trace("RankingProcessorServiceImpl.process");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, stopDateTime = {}", awardPeriodId, stopDateTime);
+            log.debug("awardPeriodId = {}, stopDateTime = {}", awardPeriodId, stopTime);
         }
 
         if (awardPeriodId == null) {
@@ -72,7 +72,7 @@ public class RankingProcessorServiceImpl implements RankingProcessorService {
         }
 
         AwardPeriod awardPeriod = awardPeriodRestClient.findById(awardPeriodId);
-        process(awardPeriod, stopDateTime);
+        process(awardPeriod, stopTime);
     }
 
 }
