@@ -160,8 +160,6 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         managePagination(sql, pageable);
         manageLocking(sql);
 
-        System.out.println(sql.toString());
-
         return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
                 preparedStatement -> {
                     preparedStatement.setLong(1, filterCriteria.getAwardPeriodId());
