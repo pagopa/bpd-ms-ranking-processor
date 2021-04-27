@@ -10,6 +10,7 @@ import it.gov.pagopa.bpd.ranking_processor.service.ranking.strategy.RankingUpdat
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,7 @@ import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingD
  */
 @Slf4j
 @Service
+@Conditional(RankingUpdateEnabledCondition.class)
 @Order(2)
 class UpdateRankingCommand implements RankingSubProcessCommand {
 
