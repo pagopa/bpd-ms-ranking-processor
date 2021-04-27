@@ -34,6 +34,7 @@ import java.util.List;
 class CitizenRankingDaoImpl implements CitizenRankingDao {
 
     private static final String UPDATE_REDIS_SQL = "UPDATE redis_cache_config SET update_ranking=true, update_ranking_from=CURRENT_TIMESTAMP";
+    private static final String UPDATE_MILESTONE_SQL = "SELECT * from update_ranking_with_milestone(?, ?, ?)";
     private static final String UPDATE_RANKING_PROCESSOR_LOCK_SQL = "update bpd_citizen.bpd_ranking_processor_lock set worker_count = worker_count + :value, status = case when (worker_count + :value) = 0 then 'IDLE' else 'IN_PROGRESS' end, update_user = :updateUser, update_date = CURRENT_TIMESTAMP where process_id = :processId";
     private static final String GET_WORKER_COUNT_SQL = "select worker_count from bpd_ranking_processor_lock where process_id = ?";
 
@@ -103,6 +104,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         return namedParameterJdbcTemplate.batchUpdate(updateCashbackSql, batchValues);
     }
 
+
     @Override
     public int[] insertCashback(final List<CitizenRanking> citizenRankings) {
         if (log.isTraceEnabled()) {
@@ -116,6 +118,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         return insertRankingOps.executeBatch(batchValues);
     }
 
+
     @Override
     public int updateRedis() {
         if (log.isTraceEnabled()) {
@@ -124,6 +127,17 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
 
         return jdbcTemplate.update(UPDATE_REDIS_SQL);
     }
+
+
+    @Override
+    public int updateMilestone(Integer offset, Integer limit, OffsetDateTime timestamp) {
+        if (log.isTraceEnabled()) {
+            log.trace("CitizenRankingDaoImpl.updateMilestone");
+        }
+
+        return jdbcTemplate.queryForObject(UPDATE_MILESTONE_SQL, Integer.class, offset, limit, timestamp);
+    }
+
 
     @Override
     public int updateRankingExt(CitizenRankingExt rankingExt) {

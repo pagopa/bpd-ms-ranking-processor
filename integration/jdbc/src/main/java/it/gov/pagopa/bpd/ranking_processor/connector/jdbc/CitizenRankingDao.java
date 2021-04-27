@@ -5,6 +5,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRankingEx
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -38,6 +39,8 @@ public interface CitizenRankingDao {
 
     int getWorkerCount(RankingProcess process);
 
+    int updateMilestone(Integer offset, Integer limit, OffsetDateTime timestamp);
+
     enum RankingProcess {
         UPDATE_CASHBACK,
         UPDATE_CASHBACK_PAYMENT,
@@ -45,6 +48,7 @@ public interface CitizenRankingDao {
         UPDATE_CASHBACK_PARTIAL_TRANSFER,
         UPDATE_RANKING,
         UPDATE_RANKING_EXT,
-        UPDATE_REDIS;
+        UPDATE_REDIS,
+        UPDATE_MILESTONE;
     }
 }

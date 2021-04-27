@@ -53,7 +53,8 @@ class UpdateRedisCommand implements RankingSubProcessCommand {
 
         if (!isToStop.test(stopTime)
                 && citizenRankingDao.getWorkerCount(UPDATE_CASHBACK) == 0
-                && citizenRankingDao.getWorkerCount(UPDATE_RANKING) == 0) {
+                && citizenRankingDao.getWorkerCount(UPDATE_RANKING) == 0
+                && citizenRankingDao.getWorkerCount(UPDATE_MILESTONE) == 0) {
             int affectedRow = citizenRankingDao.registerWorker(UPDATE_REDIS, true);
             if (affectedRow != 0) {
                 checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "register", UPDATE_REDIS));
