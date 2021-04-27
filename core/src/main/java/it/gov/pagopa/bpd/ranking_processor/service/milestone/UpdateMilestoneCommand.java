@@ -52,7 +52,7 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
 
         this.citizenRankingDao = citizenRankingDao;
         this.threadPool = threadPool;
-        this.maxRecordToUpdate = maxRecordToUpdate;
+        this.maxRecordToUpdate = maxRecordToUpdate == null ? Integer.MAX_VALUE : maxRecordToUpdate;
         this.milestoneUpdateLimit = milestoneUpdateLimit;
     }
 
