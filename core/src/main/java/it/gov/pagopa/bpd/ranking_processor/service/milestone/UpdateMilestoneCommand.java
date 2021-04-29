@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -74,7 +75,7 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
                 checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "register", UPDATE_MILESTONE));
 
                 try {
-                    updateRankingMilestone();
+                    updateRankingMilestone(stopTime);
 
                 } catch (RuntimeException e) {
                     log.error(e.getMessage());
@@ -105,7 +106,7 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
     }
 
 
-    private void updateRankingMilestone() {
+    private void updateRankingMilestone(LocalTime stopTime) {
         log.info("Start execute updateRankingMilestone");
 
         ExecutorService pool = null;
@@ -116,14 +117,28 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
             OffsetDateTime timestamp = OffsetDateTime.now();
 
             pool = Executors.newFixedThreadPool(threadPool);
-            ArrayList<ConcurrentJob> concurrentJobs = new ArrayList<>(threadPool);
+            ArrayList<Callable<Void>> concurrentJobs = new ArrayList<>(threadPool);
             for (int threadCount = 0; threadCount < threadPool; threadCount++) {
-                concurrentJobs.add(new ConcurrentJob(totalCitizenElab,
-                        checkContinueUpdateRankingMilestone,
-                        maxRecordToUpdate,
-                        milestoneUpdateLimit,
-                        citizenRankingDao,
-                        timestamp));
+                concurrentJobs.add(new Callable<Void>() {
+                    @Override
+                    public Void call() {
+                        if (!isToStop.test(stopTime)
+                                && checkContinueUpdateRankingMilestone.get()
+                                && (maxRecordToUpdate == null
+                                || totalCitizenElab.get() < maxRecordToUpdate)) {
+                            log.info("Start updateMilestone chunk with limit {}",
+                                    milestoneUpdateLimit);
+                            Integer citizenElab = citizenRankingDao.updateMilestone(0, milestoneUpdateLimit, timestamp);
+                            totalCitizenElab.addAndGet(citizenElab);
+                            log.info("End updateMilestone chunk: citizen elaborated = {}, total citizen elaborated = {}",
+                                    citizenElab,
+                                    totalCitizenElab);
+                            checkContinueUpdateRankingMilestone.set(citizenElab == milestoneUpdateLimit);
+                            call();
+                        }
+                        return null;
+                    }
+                });
             }
             pool.invokeAll(concurrentJobs);
 
