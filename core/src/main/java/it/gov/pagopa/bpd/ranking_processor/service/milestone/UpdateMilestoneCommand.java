@@ -123,9 +123,16 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
             Map<String, String> mdcContextMap = MDC.getCopyOfContextMap();
             for (int threadCount = 0; threadCount < threadPool; threadCount++) {
                 concurrentJobs.add(new Callable<Void>() {
+                    {
+                        if (mdcContextMap == null) {
+                            MDC.clear();
+                        } else {
+                            MDC.setContextMap(mdcContextMap);
+                        }
+                    }
+
                     @Override
                     public Void call() {
-                        MDC.setContextMap(mdcContextMap);
                         if (!isToStop.test(stopTime)
                                 && checkContinueUpdateRankingMilestone.get()
                                 && (maxRecordToUpdate == null
