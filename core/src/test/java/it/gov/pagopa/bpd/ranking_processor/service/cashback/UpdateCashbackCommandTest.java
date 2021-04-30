@@ -109,13 +109,13 @@ public class UpdateCashbackCommandTest {
         verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
-        verify(updateStrategyMock, times(3 + 1)).process(any(), any());
+        verify(updateStrategyMock, times(TransactionType.values().length + 1)).process(any(), any());
         verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
         verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
     }
 
 
-    @Test(expected = CashbackUpdateException.class)
+    @Test
     public void execute_KoMaxRetry() {
         deadLock = true;
         retry = true;
@@ -135,7 +135,7 @@ public class UpdateCashbackCommandTest {
         verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
-        verify(updateStrategyMock, times(3 + MAX_RETRY)).process(any(), any());
+        verify(updateStrategyMock, times(TransactionType.values().length * (1 + MAX_RETRY))).process(any(), any());
         verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
         verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
     }
@@ -160,7 +160,7 @@ public class UpdateCashbackCommandTest {
         verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, never()).create(eq(TransactionType.PARTIAL_TRANSFER));
-        verify(updateStrategyMock, times(3 - 1)).process(any(), any());
+        verify(updateStrategyMock, times(TransactionType.values().length - 1)).process(any(), any());
         verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
         verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
     }

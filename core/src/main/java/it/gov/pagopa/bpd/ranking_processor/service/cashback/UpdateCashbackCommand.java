@@ -132,10 +132,10 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
                         break;
 
                     } catch (DeadlockLoserDataAccessException | DuplicateKeyException e) {
-                        if (retryCount++ < cashbackUpdateRetry) {
-                            log.warn(e.getMessage());
-                        } else {
-                            throw new CashbackUpdateException("Exceeded max retry number");
+                        log.warn(e.getMessage());
+                        if (++retryCount > cashbackUpdateRetry) {
+                            log.error("Exceeded max retry number");
+                            return;
                         }
                     }
                 }

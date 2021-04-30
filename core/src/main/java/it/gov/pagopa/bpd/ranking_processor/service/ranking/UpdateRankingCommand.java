@@ -99,7 +99,9 @@ class UpdateRankingCommand implements RankingSubProcessCommand {
         }
 
         if (!isToStop.test(stopTime)) {
+            log.info("Start updateRankingExt");
             rankingUpdateStrategy.updateRankingExt(awardPeriod);
+            log.info("End updateRankingExt");
         }
     }
 
