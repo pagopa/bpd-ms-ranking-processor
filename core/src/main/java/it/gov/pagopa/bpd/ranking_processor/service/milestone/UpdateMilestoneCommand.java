@@ -5,6 +5,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.util.DaoHelper;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingSubProcessCommand;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Conditional;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -118,10 +120,12 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
 
             pool = Executors.newFixedThreadPool(threadPool);
             ArrayList<Callable<Void>> concurrentJobs = new ArrayList<>(threadPool);
+            Map<String, String> mdcContextMap = MDC.getCopyOfContextMap();
             for (int threadCount = 0; threadCount < threadPool; threadCount++) {
                 concurrentJobs.add(new Callable<Void>() {
                     @Override
                     public Void call() {
+                        MDC.setContextMap(mdcContextMap);
                         if (!isToStop.test(stopTime)
                                 && checkContinueUpdateRankingMilestone.get()
                                 && (maxRecordToUpdate == null
