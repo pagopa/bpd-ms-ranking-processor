@@ -3,7 +3,7 @@
     <parent>
         <artifactId>bpd-ms-ranking-processor-integration</artifactId>
         <groupId>it.gov.pagopa.bpd.ms.ranking_processor</groupId>
-        <version>cen-117-rc4</version>
+        <version>1.3.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
