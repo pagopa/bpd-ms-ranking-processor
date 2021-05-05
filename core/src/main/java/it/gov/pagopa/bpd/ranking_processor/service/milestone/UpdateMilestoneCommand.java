@@ -15,10 +15,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -139,7 +138,7 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
                                 || totalCitizenElab.get() < maxRecordToUpdate)) {
                             log.info("Start updateMilestone chunk with limit {}",
                                     milestoneUpdateLimit);
-                            Integer citizenElab = citizenRankingDao.updateMilestone(0, milestoneUpdateLimit, timestamp);
+                            int citizenElab = citizenRankingDao.updateMilestone(0, milestoneUpdateLimit, timestamp);
                             totalCitizenElab.addAndGet(citizenElab);
                             log.info("End updateMilestone chunk: citizen elaborated = {}, total citizen elaborated = {}",
                                     citizenElab,
@@ -151,9 +150,12 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
                     }
                 });
             }
-            pool.invokeAll(concurrentJobs);
+            List<Future<Void>> futures = pool.invokeAll(concurrentJobs);
+            for (Future<Void> future : futures) {
+                future.get();
+            }
 
-        } catch (InterruptedException e) {
+        } catch (InterruptedException | ExecutionException e) {
             throw new MilestoneUpdateException(e.getMessage());
 
         } finally {
