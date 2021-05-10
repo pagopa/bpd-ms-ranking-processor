@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao.FIND_PAYMENT_TO_PROCESS_PAGEABLE_SORT;
+import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao.FIND_TRX_TO_PROCESS_PAGEABLE_SORT;
 
 /**
  * Implementation of {@link CashbackUpdateStrategyTemplate} to handle payment
@@ -48,7 +48,7 @@ class PaymentCashbackUpdate extends CashbackUpdateStrategyTemplate {
     protected List<WinningTransaction> retrieveTransactions(long awardPeriodId, Pageable pageable) {
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(),
                 pageable.getPageSize(),
-                FIND_PAYMENT_TO_PROCESS_PAGEABLE_SORT);
+                FIND_TRX_TO_PROCESS_PAGEABLE_SORT);
         return winningTransactionDao.findPaymentToProcess(awardPeriodId, pageRequest);
     }
 

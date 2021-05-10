@@ -13,9 +13,9 @@ import java.util.List;
 public interface WinningTransactionDao {
 
     /**
-     * Sort to retrieve payment transaction sorted by fiscal code
+     * Sort to retrieve transactions sorted by fiscal code
      */
-    Sort FIND_PAYMENT_TO_PROCESS_PAGEABLE_SORT = Sort.by("fiscal_code_s");
+    Sort FIND_TRX_TO_PROCESS_PAGEABLE_SORT = Sort.by("fiscal_code_s");
 
     List<WinningTransaction> findPaymentToProcess(Long awardPeriodId, Pageable pageable);
 

@@ -3,6 +3,8 @@ package it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy;
 import it.gov.pagopa.bpd.ranking_processor.connector.award_period.model.AwardPeriod;
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import org.mockito.BDDMockito;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
@@ -24,6 +26,11 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
     @Override
     public CashbackUpdateStrategy getCashbackUpdateService() {
         return cashbackUpdateStrategy;
+    }
+
+    @Override
+    protected PageRequest toPageable(SimplePageRequest pageRequest) {
+        return PageRequest.of(pageRequest.getPage(), pageRequest.getSize(), Sort.by("fiscal_code_s"));
     }
 
 }

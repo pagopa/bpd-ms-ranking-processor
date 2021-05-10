@@ -57,7 +57,7 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
 
         findPaymentTrxToProcessQuery = String.format("select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction where enabled_b is true and %s is not true and award_period_id_n = ? and operation_type_c != '01'",
                 elabRankingName);
-        findTotalTransferTrxToProcessQuery = String.format("select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction transfer where transfer.enabled_b is true and transfer.%s is not true and transfer.award_period_id_n = ? and transfer.operation_type_c = '01' and transfer.insert_date_t > current_timestamp - interval '%s' and exists ( select 1 from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != transfer.operation_type_c and payment.award_period_id_n = transfer.award_period_id_n and payment.hpan_s = transfer.hpan_s and payment.acquirer_c = transfer.acquirer_c and payment.acquirer_id_s = transfer.acquirer_id_s and payment.amount_i = transfer.amount_i and ((nullif(transfer.correlation_id_s, '') is null and payment.merchant_id_s = transfer.merchant_id_s and payment.terminal_id_s = transfer.terminal_id_s) or (nullif(transfer.correlation_id_s, '') is not null and payment.correlation_id_s = transfer.correlation_id_s)))",
+        findTotalTransferTrxToProcessQuery = String.format("select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction transfer where transfer.enabled_b is true and transfer.%s is not true and transfer.award_period_id_n = ? and transfer.operation_type_c = '01' and transfer.insert_date_t > current_timestamp - interval '%s' and exists ( select 1 from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = transfer.hpan_s and payment.acquirer_c = transfer.acquirer_c and payment.acquirer_id_s = transfer.acquirer_id_s and payment.amount_i = transfer.amount_i and ((nullif(transfer.correlation_id_s, '') is null and payment.merchant_id_s = transfer.merchant_id_s and payment.terminal_id_s = transfer.terminal_id_s) or (nullif(transfer.correlation_id_s, '') is not null and payment.correlation_id_s = transfer.correlation_id_s)))",
                 elabRankingName,
                 transferMaxDepth,
                 elabRankingName);
@@ -121,8 +121,13 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
         managePagination(sql, pageable);
         manageLocking(sql);
 
+        System.out.println(sql.toString());
+
         return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
-                preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
+                preparedStatement -> {
+                    preparedStatement.setLong(1, awardPeriodId);
+                    preparedStatement.setLong(2, awardPeriodId);
+                },
                 totalTransferTrxResultSetExtractor);
     }
 

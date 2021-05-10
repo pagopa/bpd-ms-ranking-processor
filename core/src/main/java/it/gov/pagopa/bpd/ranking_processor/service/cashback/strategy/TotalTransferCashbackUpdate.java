@@ -8,10 +8,13 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Conditional;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+
+import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao.FIND_TRX_TO_PROCESS_PAGEABLE_SORT;
 
 /**
  * Implementation of {@link CashbackUpdateStrategyTemplate} to handle total transfer
@@ -43,7 +46,10 @@ class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
 
     @Override
     protected List<WinningTransaction> retrieveTransactions(long awardPeriodId, Pageable pageable) {
-        return winningTransactionDao.findTotalTransferToProcess(awardPeriodId, pageable);
+        Pageable pageRequest = PageRequest.of(pageable.getPageNumber(),
+                pageable.getPageSize(),
+                FIND_TRX_TO_PROCESS_PAGEABLE_SORT);
+        return winningTransactionDao.findTotalTransferToProcess(awardPeriodId, pageRequest);
     }
 
 }
