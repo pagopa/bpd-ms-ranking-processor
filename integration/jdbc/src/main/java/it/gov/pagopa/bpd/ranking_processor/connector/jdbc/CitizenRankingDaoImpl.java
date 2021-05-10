@@ -34,7 +34,11 @@ import java.util.List;
 class CitizenRankingDaoImpl implements CitizenRankingDao {
 
     private static final String UPDATE_REDIS_SQL = "UPDATE redis_cache_config SET update_ranking=true, update_ranking_from=CURRENT_TIMESTAMP";
-    private static final String UPDATE_MILESTONE_SQL = "SELECT * from update_ranking_with_milestone(?, ?, ?)";
+    private static final String UPDATE_CASHBACK_SQL_TEMPLATE = "update %s bcr set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)";
+    private static final String FINDALL_BY_AWARDPERIOD_AND_UPDATEDATE_SQL_TEMPLATE = "select bcr.fiscal_code_c, bcr.award_period_id_n, bcr.transaction_n, bcr.cashback_n, bcr.ranking_n from %s bcr inner join bpd_citizen.bpd_citizen bc on bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true where bcr.award_period_id_n = ? and coalesce(bcr.update_date_t,'1900-01-01 00:00:00.000'::timestamptz) < ?";
+    private static final String UPDATE_RANKING_SQL_TEMPLATE = "update %s bcr set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId";
+    private static final String UPDATE_RANKING_EXT_SQL_TEMPLATE = "update %s set ${TOTAL_PARTECIPANTS} ${MIN_TRANSACTION} max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId";
+    private static final String UPDATE_MILESTONE_SQL_TEMPLATE = "SELECT * from %s(?, ?, ?)";
     private static final String UPDATE_RANKING_PROCESSOR_LOCK_SQL = "update bpd_citizen.bpd_ranking_processor_lock set worker_count = worker_count + :value, status = case when (worker_count + :value) = 0 then 'IDLE' else 'IN_PROGRESS' end, update_user = :updateUser, update_date = CURRENT_TIMESTAMP where process_id = :processId";
     private static final String GET_WORKER_COUNT_SQL = "select worker_count from bpd_ranking_processor_lock where process_id = ?";
 
@@ -42,6 +46,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     private final String updateRankingSql;
     private final String updateRankingExtSql;
     private final String findAllByAwardPeriodAndUpdateDateSql;
+    private final String updateMilestoneSql;
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final RowMapperResultSetExtractor<CitizenRanking> findAllResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
@@ -52,7 +57,8 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     @Autowired
     public CitizenRankingDaoImpl(@Qualifier("citizenJdbcTemplate") JdbcTemplate jdbcTemplate,
                                  @Value("${citizen.dao.table.name.ranking}") String rankingTableName,
-                                 @Value("${citizen.dao.table.name.rankingExt}") String rankingExtTableName) {
+                                 @Value("${citizen.dao.table.name.rankingExt}") String rankingExtTableName,
+                                 @Value("${citizen.dao.function.name.milestone}") String milestoneFunctionName) {
         if (log.isTraceEnabled()) {
             log.trace("CitizenRankingDaoImpl.CitizenRankingDaoImpl");
         }
@@ -80,14 +86,16 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
                 .withTableName(rankingExtTableName)
                 .usingColumns(rankingExtColumns);
 
-        updateCashbackSql = String.format("update %s bcr set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)",
+        updateCashbackSql = String.format(UPDATE_CASHBACK_SQL_TEMPLATE,
                 rankingTableName);
-        findAllByAwardPeriodAndUpdateDateSql = String.format("select bcr.fiscal_code_c, bcr.award_period_id_n, bcr.transaction_n, bcr.cashback_n, bcr.ranking_n from %s bcr inner join bpd_citizen.bpd_citizen bc on bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true where bcr.award_period_id_n = ? and coalesce(bcr.update_date_t,'1900-01-01 00:00:00.000'::timestamptz) < ?",
+        findAllByAwardPeriodAndUpdateDateSql = String.format(FINDALL_BY_AWARDPERIOD_AND_UPDATEDATE_SQL_TEMPLATE,
                 rankingTableName);
-        updateRankingSql = String.format("update %s bcr set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId",
+        updateRankingSql = String.format(UPDATE_RANKING_SQL_TEMPLATE,
                 rankingTableName);
-        updateRankingExtSql = String.format("update %s set ${TOTAL_PARTECIPANTS} ${MIN_TRANSACTION} max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId",
+        updateRankingExtSql = String.format(UPDATE_RANKING_EXT_SQL_TEMPLATE,
                 rankingExtTableName);
+        updateMilestoneSql = String.format(UPDATE_MILESTONE_SQL_TEMPLATE,
+                milestoneFunctionName);
     }
 
 
@@ -135,7 +143,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
             log.trace("CitizenRankingDaoImpl.updateMilestone");
         }
 
-        return jdbcTemplate.queryForObject(UPDATE_MILESTONE_SQL, Integer.class, offset, limit, timestamp);
+        return jdbcTemplate.queryForObject(updateMilestoneSql, Integer.class, offset, limit, timestamp);
     }
 
 
