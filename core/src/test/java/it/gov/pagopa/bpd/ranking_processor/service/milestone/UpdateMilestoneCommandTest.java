@@ -18,24 +18,29 @@ public class UpdateMilestoneCommandTest {
     private static boolean getCashbackWorkerCountResult;
     private static boolean getRankingWorkerCountResult;
     private static boolean processResult;
+    private static boolean singleprocess;
 
-    private final UpdateMilestoneCommand updateMilestoneCommand;
+    private UpdateMilestoneCommand updateMilestoneCommand;
     private final CitizenRankingDao citizenRankingDaoMock;
 
     public UpdateMilestoneCommandTest() {
         citizenRankingDaoMock = Mockito.mock(CitizenRankingDao.class);
-        when(citizenRankingDaoMock.registerWorker(eq(UPDATE_MILESTONE), eq(true)))
+        when(citizenRankingDaoMock.registerWorker(eq(UPDATE_MILESTONE), anyBoolean()))
                 .thenAnswer(invocationOnMock -> registerWorkerResult ? 1 : -1);
         when(citizenRankingDaoMock.unregisterWorker(eq(UPDATE_MILESTONE)))
                 .thenAnswer(invocationOnMock -> unregisterWorkerResult ? 1 : -1);
         when(citizenRankingDaoMock.getWorkerCount(eq(UPDATE_CASHBACK)))
                 .thenAnswer(invocationOnMock -> getCashbackWorkerCountResult ? 0 : 1);
         when(citizenRankingDaoMock.getWorkerCount(eq(UPDATE_RANKING)))
-                .thenAnswer(invocationOnMock -> getRankingWorkerCountResult ? 0 : 1);
+                .thenAnswer(invocationOnMock -> {
+                    boolean result = getRankingWorkerCountResult;
+                    if (!singleprocess) {
+                        getRankingWorkerCountResult = true;
+                    }
+                    return result ? 0 : 1;
+                });
         when(citizenRankingDaoMock.updateMilestone(anyInt(), anyInt(), any()))
                 .thenAnswer(invocationOnMock -> processResult ? 1 : -1);
-
-        updateMilestoneCommand = new UpdateMilestoneCommand(citizenRankingDaoMock, 2, 100, 10);
     }
 
     @Before
@@ -45,6 +50,7 @@ public class UpdateMilestoneCommandTest {
         getCashbackWorkerCountResult = true;
         getRankingWorkerCountResult = true;
         processResult = true;
+        updateMilestoneCommand = new UpdateMilestoneCommand(citizenRankingDaoMock, 2, 100, 10, true, 100);
     }
 
     @Test
@@ -54,6 +60,20 @@ public class UpdateMilestoneCommandTest {
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_RANKING));
         verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_MILESTONE), eq(true));
+        verify(citizenRankingDaoMock, atLeast(1)).updateMilestone(anyInt(), anyInt(), any());
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_MILESTONE));
+        verifyNoMoreInteractions(citizenRankingDaoMock);
+    }
+
+    @Test
+    public void execute_OkNoSingleProcess() {
+        getRankingWorkerCountResult = false;
+        updateMilestoneCommand = new UpdateMilestoneCommand(citizenRankingDaoMock, 2, 100, 10, false, 100);
+        updateMilestoneCommand.execute(null, null);
+
+        verify(citizenRankingDaoMock, times(2)).getWorkerCount(eq(UPDATE_CASHBACK));
+        verify(citizenRankingDaoMock, times(2)).getWorkerCount(eq(UPDATE_RANKING));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_MILESTONE), eq(false));
         verify(citizenRankingDaoMock, atLeast(1)).updateMilestone(anyInt(), anyInt(), any());
         verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_MILESTONE));
         verifyNoMoreInteractions(citizenRankingDaoMock);

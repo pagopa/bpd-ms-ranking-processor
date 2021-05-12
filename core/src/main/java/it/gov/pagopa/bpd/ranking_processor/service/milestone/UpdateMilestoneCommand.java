@@ -38,13 +38,17 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
     private final int threadPool;
     private final Integer maxRecordToUpdate;
     private final int milestoneUpdateLimit;
+    private final boolean singleProcessEnabled;
+    private final long waitTime;
 
 
     @Autowired
     public UpdateMilestoneCommand(CitizenRankingDao citizenRankingDao,
                                   @Value("${milestone-update.thread-pool-size}") int threadPool,
                                   @Value("${milestone-update.max-record-to-update}") Integer maxRecordToUpdate,
-                                  @Value("${milestone-update.data-extraction.limit}") int milestoneUpdateLimit) {
+                                  @Value("${milestone-update.data-extraction.limit}") int milestoneUpdateLimit,
+                                  @Value("${milestone-update.single-process.enable}") boolean singleProcessEnabled,
+                                  @Value("${milestone-update.wait-time}") long waitTime) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateMilestoneCommand.UpdateMilestoneCommand");
         }
@@ -56,6 +60,8 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
         this.threadPool = threadPool;
         this.maxRecordToUpdate = maxRecordToUpdate == null ? Integer.MAX_VALUE : maxRecordToUpdate;
         this.milestoneUpdateLimit = milestoneUpdateLimit;
+        this.singleProcessEnabled = singleProcessEnabled;
+        this.waitTime = waitTime;
     }
 
 
@@ -68,27 +74,45 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
             log.debug("awardPeriod = {}", awardPeriod);
         }
 
-        if (!isToStop.test(stopTime)
-                && citizenRankingDao.getWorkerCount(UPDATE_CASHBACK) == 0
-                && citizenRankingDao.getWorkerCount(UPDATE_RANKING) == 0) {
-            int affectedRow = citizenRankingDao.registerWorker(UPDATE_MILESTONE, true);
-            if (affectedRow != 0) {
-                checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "register", UPDATE_MILESTONE));
+        if (!isToStop.test(stopTime)) {
+            boolean retry;
+            do {
+                retry = false;
 
-                try {
-                    updateRankingMilestone(stopTime);
+                if (citizenRankingDao.getWorkerCount(UPDATE_CASHBACK) == 0
+                        && citizenRankingDao.getWorkerCount(UPDATE_RANKING) == 0) {
+                    int affectedRow = citizenRankingDao.registerWorker(UPDATE_MILESTONE, singleProcessEnabled);
+                    if (affectedRow != 0) {
+                        checkError(affectedRow, String.format(FAILED_UPDATE_WORKER_MESSAGE_FORMAT, "register", UPDATE_MILESTONE));
 
-                } catch (RuntimeException e) {
-                    log.error(e.getMessage());
-                    unregisterWorker();
-                    throw e;
+                        try {
+                            updateRankingMilestone(stopTime);
+
+                        } catch (RuntimeException e) {
+                            log.error(e.getMessage());
+                            unregisterWorker();
+                            throw e;
+                        }
+
+                        unregisterWorker();
+
+                    } else {
+                        log.info("skip {}", UPDATE_MILESTONE);
+                    }
+
+                } else {
+                    if (!singleProcessEnabled) {
+                        try {
+                            Thread.sleep(waitTime);
+
+                        } catch (InterruptedException e) {
+                            throw new MilestoneUpdateException(e.getMessage());
+                        }
+                        retry = true;
+                    }
                 }
 
-                unregisterWorker();
-
-            } else {
-                log.info("skip {}", UPDATE_MILESTONE);
-            }
+            } while (retry);
         }
     }
 
