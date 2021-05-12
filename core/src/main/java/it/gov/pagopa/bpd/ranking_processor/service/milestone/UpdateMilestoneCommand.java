@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
@@ -40,6 +41,7 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
     private final int milestoneUpdateLimit;
     private final boolean singleProcessEnabled;
     private final long waitTime;
+    private final Integer milestoneUpdateRetry;
 
 
     @Autowired
@@ -48,7 +50,8 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
                                   @Value("${milestone-update.max-record-to-update}") Integer maxRecordToUpdate,
                                   @Value("${milestone-update.data-extraction.limit}") int milestoneUpdateLimit,
                                   @Value("${milestone-update.single-process.enable}") boolean singleProcessEnabled,
-                                  @Value("${milestone-update.wait-time}") long waitTime) {
+                                  @Value("${milestone-update.wait-time}") long waitTime,
+                                  @Value("${milestone-update.retry.limit}") Integer milestoneUpdateRetry) {
         if (log.isTraceEnabled()) {
             log.trace("UpdateMilestoneCommand.UpdateMilestoneCommand");
         }
@@ -62,6 +65,7 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
         this.milestoneUpdateLimit = milestoneUpdateLimit;
         this.singleProcessEnabled = singleProcessEnabled;
         this.waitTime = waitTime;
+        this.milestoneUpdateRetry = milestoneUpdateRetry == null ? Integer.MAX_VALUE : milestoneUpdateRetry;
     }
 
 
@@ -146,6 +150,8 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
             Map<String, String> mdcContextMap = MDC.getCopyOfContextMap();
             for (int threadCount = 0; threadCount < threadPool; threadCount++) {
                 concurrentJobs.add(new Callable<Void>() {
+                    private int retryCount = 0;
+
                     {
                         if (mdcContextMap == null) {
                             MDC.clear();
@@ -162,12 +168,20 @@ class UpdateMilestoneCommand implements RankingSubProcessCommand {
                                 || totalCitizenElab.get() < maxRecordToUpdate)) {
                             log.info("Start updateMilestone chunk with limit {}",
                                     milestoneUpdateLimit);
-                            int citizenElab = citizenRankingDao.updateMilestone(0, milestoneUpdateLimit, timestamp);
-                            totalCitizenElab.addAndGet(citizenElab);
-                            log.info("End updateMilestone chunk: citizen elaborated = {}, total citizen elaborated = {}",
-                                    citizenElab,
-                                    totalCitizenElab);
-                            checkContinueUpdateRankingMilestone.set(citizenElab == milestoneUpdateLimit);
+                            try {
+                                int citizenElab = citizenRankingDao.updateMilestone(0, milestoneUpdateLimit, timestamp);
+                                totalCitizenElab.addAndGet(citizenElab);
+                                log.info("End updateMilestone chunk: citizen elaborated = {}, total citizen elaborated = {}",
+                                        citizenElab,
+                                        totalCitizenElab);
+                                checkContinueUpdateRankingMilestone.set(citizenElab == milestoneUpdateLimit);
+                            } catch (DeadlockLoserDataAccessException e) {
+                                log.warn(e.getMessage());
+                                if (++retryCount > milestoneUpdateRetry) {
+                                    log.error("Exceeded max retry number");
+                                    throw e;
+                                }
+                            }
                             call();
                         }
                         return null;

@@ -6,12 +6,16 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.springframework.dao.DeadlockLoserDataAccessException;
 
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.*;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.will;
 import static org.mockito.Mockito.*;
 
 public class UpdateMilestoneCommandTest {
+
+    public static final int MAX_RETRY = 2;
 
     private static boolean registerWorkerResult;
     private static boolean unregisterWorkerResult;
@@ -19,6 +23,8 @@ public class UpdateMilestoneCommandTest {
     private static boolean getRankingWorkerCountResult;
     private static boolean processResult;
     private static boolean singleprocess;
+    private static boolean deadlock;
+    private static boolean retry;
 
     private UpdateMilestoneCommand updateMilestoneCommand;
     private final CitizenRankingDao citizenRankingDaoMock;
@@ -41,6 +47,13 @@ public class UpdateMilestoneCommandTest {
                 });
         when(citizenRankingDaoMock.updateMilestone(anyInt(), anyInt(), any()))
                 .thenAnswer(invocationOnMock -> processResult ? 1 : -1);
+        will(invocationOnMock -> {
+            if (deadlock) {
+                deadlock = retry;
+                throw mock(DeadlockLoserDataAccessException.class);
+            }
+            return 0;
+        }).given(citizenRankingDaoMock).updateMilestone(anyInt(), anyInt(), any());
     }
 
     @Before
@@ -50,7 +63,10 @@ public class UpdateMilestoneCommandTest {
         getCashbackWorkerCountResult = true;
         getRankingWorkerCountResult = true;
         processResult = true;
-        updateMilestoneCommand = new UpdateMilestoneCommand(citizenRankingDaoMock, 2, 100, 10, true, 100);
+        deadlock = false;
+        retry = false;
+        singleprocess = true;
+        updateMilestoneCommand = new UpdateMilestoneCommand(citizenRankingDaoMock, 2, 100, 10, true, 100, null);
     }
 
     @Test
@@ -66,9 +82,40 @@ public class UpdateMilestoneCommandTest {
     }
 
     @Test
+    public void execute_OkWithDeadLock() {
+        deadlock = true;
+
+        updateMilestoneCommand.execute(null, null);
+
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_RANKING));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_MILESTONE), eq(true));
+        verify(citizenRankingDaoMock, atLeast(2)).updateMilestone(anyInt(), anyInt(), any());
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_MILESTONE));
+        verifyNoMoreInteractions(citizenRankingDaoMock);
+    }
+
+    @Test
+    public void execute_KoMaxRetry() {
+        deadlock = true;
+        deadlock = retry;
+
+        updateMilestoneCommand = new UpdateMilestoneCommand(citizenRankingDaoMock, 2, 100, 10, true, 100, MAX_RETRY);
+        updateMilestoneCommand.execute(null, null);
+
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_RANKING));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_MILESTONE), eq(true));
+        verify(citizenRankingDaoMock, atLeast(MAX_RETRY)).updateMilestone(anyInt(), anyInt(), any());
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_MILESTONE));
+        verifyNoMoreInteractions(citizenRankingDaoMock);
+    }
+
+    @Test
     public void execute_OkNoSingleProcess() {
+        singleprocess = false;
         getRankingWorkerCountResult = false;
-        updateMilestoneCommand = new UpdateMilestoneCommand(citizenRankingDaoMock, 2, 100, 10, false, 100);
+        updateMilestoneCommand = new UpdateMilestoneCommand(citizenRankingDaoMock, 2, 100, 10, false, 100, null);
         updateMilestoneCommand.execute(null, null);
 
         verify(citizenRankingDaoMock, times(2)).getWorkerCount(eq(UPDATE_CASHBACK));
