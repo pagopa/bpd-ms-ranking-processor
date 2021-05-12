@@ -39,12 +39,13 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     private static final String UPDATE_RANKING_SQL_TEMPLATE = "update %s bcr set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId";
     private static final String UPDATE_RANKING_EXT_SQL_TEMPLATE = "update %s set ${TOTAL_PARTECIPANTS} ${MIN_TRANSACTION} max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId";
     private static final String UPDATE_MILESTONE_SQL_TEMPLATE = "SELECT * from %s(?, ?, ?)";
-    private static final String UPDATE_RANKING_PROCESSOR_LOCK_SQL = "update bpd_citizen.bpd_ranking_processor_lock set worker_count = worker_count + :value, status = case when (worker_count + :value) = 0 then 'IDLE' else 'IN_PROGRESS' end, update_user = :updateUser, update_date = CURRENT_TIMESTAMP where process_id = :processId";
+    private static final String UPDATE_RANKING_PROCESSOR_LOCK_SQL = "update bpd_citizen.%s set worker_count = worker_count + :value, status = case when (worker_count + :value) = 0 then 'IDLE' else 'IN_PROGRESS' end, update_user = :updateUser, update_date = CURRENT_TIMESTAMP where process_id = :processId";
     private static final String GET_WORKER_COUNT_SQL = "select worker_count from bpd_ranking_processor_lock where process_id = ?";
 
     private final String updateCashbackSql;
     private final String updateRankingSql;
     private final String updateRankingExtSql;
+    private final String updateRankingProcessorLockSql;
     private final String findAllByAwardPeriodAndUpdateDateSql;
     private final String updateMilestoneSql;
     private final JdbcTemplate jdbcTemplate;
@@ -58,6 +59,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     public CitizenRankingDaoImpl(@Qualifier("citizenJdbcTemplate") JdbcTemplate jdbcTemplate,
                                  @Value("${citizen.dao.table.name.ranking}") String rankingTableName,
                                  @Value("${citizen.dao.table.name.rankingExt}") String rankingExtTableName,
+                                 @Value("${citizen.dao.table.name.rankingLock}") String rankingLockTableName,
                                  @Value("${citizen.dao.function.name.milestone}") String milestoneFunctionName) {
         if (log.isTraceEnabled()) {
             log.trace("CitizenRankingDaoImpl.CitizenRankingDaoImpl");
@@ -94,6 +96,8 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
                 rankingTableName);
         updateRankingExtSql = String.format(UPDATE_RANKING_EXT_SQL_TEMPLATE,
                 rankingExtTableName);
+        updateRankingProcessorLockSql = String.format(UPDATE_RANKING_PROCESSOR_LOCK_SQL,
+                rankingLockTableName);
         updateMilestoneSql = String.format(UPDATE_MILESTONE_SQL_TEMPLATE,
                 milestoneFunctionName);
     }
@@ -308,8 +312,8 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         BeanPropertySqlParameterSource sqlParameterSource = new BeanPropertySqlParameterSource(updateWorkerDto);
 
         return namedParameterJdbcTemplate.update(exclusiveLock
-                        ? UPDATE_RANKING_PROCESSOR_LOCK_SQL + " and worker_count = 0"
-                        : UPDATE_RANKING_PROCESSOR_LOCK_SQL,
+                        ? updateRankingProcessorLockSql + " and worker_count = 0"
+                        : updateRankingProcessorLockSql,
                 sqlParameterSource);
     }
 

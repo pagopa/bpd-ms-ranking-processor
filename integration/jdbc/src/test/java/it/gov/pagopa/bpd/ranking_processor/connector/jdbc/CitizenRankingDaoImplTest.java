@@ -36,7 +36,11 @@ public class CitizenRankingDaoImplTest extends BaseTest {
     @SneakyThrows
     public CitizenRankingDaoImplTest() {
         jdbcTemplateMock = Mockito.mock(JdbcTemplate.class);
-        citizenRankingDao = new CitizenRankingDaoImpl(jdbcTemplateMock, "bpd_citizen_ranking", "bpd_citizen_ranking_ext", "update_ranking_with_milestone");
+        citizenRankingDao = new CitizenRankingDaoImpl(jdbcTemplateMock,
+                "bpd_citizen_ranking",
+                "bpd_citizen_ranking_ext",
+                "bpd_ranking_processor_lock",
+                "update_ranking_with_milestone");
         Field insertRankingOps = CitizenRankingDaoImpl.class.getDeclaredField("insertRankingOps");
         insertRankingOps.setAccessible(true);
         insertRankingOpsMock = Mockito.mock(SimpleJdbcInsertOperations.class);

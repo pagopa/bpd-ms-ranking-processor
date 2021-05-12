@@ -121,8 +121,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
         managePagination(sql, pageable);
         manageLocking(sql);
 
-        System.out.println(sql.toString());
-
         return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
                 preparedStatement -> {
                     preparedStatement.setLong(1, awardPeriodId);
