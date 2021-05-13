@@ -6,9 +6,12 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransacti
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -25,6 +28,8 @@ import static it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy.Cash
 class CommonAggregator implements AggregatorStrategy {
 
     private final ExecutionStrategy executionStrategy;
+    private LocalDate enableDate;
+
 
     @Autowired
     public CommonAggregator(ExecutionStrategyFactory executionStrategyFactory) {
@@ -38,7 +43,11 @@ class CommonAggregator implements AggregatorStrategy {
                 .peek(trx -> {
                     trx.setUpdateDate(now);
                     trx.setUpdateUser(RankingProcessorService.PROCESS_NAME);
+                    if ((now.toLocalDate().isAfter(enableDate) || now.toLocalDate().equals(enableDate))) {
+                        trx.setValid(trx.getAmount().longValue() > awardPeriod.getMinAmount().longValue());
+                    }
                 })
+                .filter(trx -> trx.getValid() || trx.getValid() == null)
                 .map(trx -> CitizenRanking.builder()
                         .fiscalCode(trx.getFiscalCode())
                         .awardPeriodId(awardPeriod.getAwardPeriodId())
@@ -50,6 +59,13 @@ class CommonAggregator implements AggregatorStrategy {
                 .collect(executionStrategy.toMap(CitizenRanking::getFiscalCode, Function.identity(), CASHBACK_MAPPER));
 
         return cashbackMap.values();
+    }
+
+
+    @Autowired
+    private void setLocalDate(@Value(value = "${ranking-processor.enabledDate}")
+                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate enableDate) {
+        this.enableDate = enableDate;
     }
 
 }

@@ -27,6 +27,8 @@ public class WinningTransaction implements Serializable {
     private String updateUser;
     private String correlationId;
     private BigDecimal amountBalance;
+    private BigDecimal originalAmountBalance;
+    private Boolean valid;
 
 
     public enum TransactionType {

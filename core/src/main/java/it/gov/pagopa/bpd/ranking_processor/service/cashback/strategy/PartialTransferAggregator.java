@@ -6,9 +6,12 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransacti
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -25,6 +28,8 @@ import static java.math.BigDecimal.ROUND_HALF_DOWN;
 class PartialTransferAggregator implements AggregatorStrategy {
 
     private final ExecutionStrategy executionStrategy;
+    private LocalDate enableDate;
+
 
     @Autowired
     public PartialTransferAggregator(ExecutionStrategyFactory executionStrategyFactory) {
@@ -49,53 +54,65 @@ class PartialTransferAggregator implements AggregatorStrategy {
         executionStrategy.streamSupplier(transactions).sequential().forEach(trx -> {
             trx.setUpdateDate(now);
             trx.setUpdateUser(RankingProcessorService.PROCESS_NAME);
-            amountBalanceMap.compute(trx.getUniqueCorrelationKey(), (key, oldValue) -> {
-                BigDecimal oldAmountBalance = oldValue == null ? trx.getAmountBalance() : oldValue;
-                BigDecimal newAmountBalance = oldAmountBalance.subtract(trx.getAmount());
-                CitizenRanking.CitizenRankingBuilder rankingBuilder = CitizenRanking.builder()
-                        .fiscalCode(trx.getFiscalCode())
-                        .awardPeriodId(awardPeriod.getAwardPeriodId())
-                        .updateDate(now)
-                        .updateUser(RankingProcessorService.PROCESS_NAME);
-                if (newAmountBalance.compareTo(BigDecimal.ZERO) < 0) {
-                    throw new IllegalStateException(String.format("Negative amount balance for transaction with idTrxAcquirer = %s, acquirerCode = %s, acquirerId = %s, trxDate = %s, correlationId = %s",
-                            trx.getIdTrxAcquirer(),
-                            trx.getAcquirerCode(),
-                            trx.getAcquirerId(),
-                            trx.getTrxDate(),
-                            trx.getCorrelationId()));
-                } else if (newAmountBalance.compareTo(BigDecimal.ZERO) == 0) {
-                    BigDecimal actualScore = trx.getAmount()
-                            .multiply(negativeCashbackMultiplier)
-                            .setScale(2, ROUND_HALF_DOWN);
-                    trx.setScore(actualScore);
-                    rankingBuilder.totalCashback(actualScore)
-                            .transactionNumber(-1L);
-                    rankingMap.merge(trx.getFiscalCode(), rankingBuilder.build(), CASHBACK_MAPPER);
-                } else if (newAmountBalance.compareTo(maxTrxEval) < 0) {
-                    BigDecimal actualScore;
-                    if (oldAmountBalance.compareTo(maxTrxEval) > 0) {
-                        actualScore = maxTrxEval
-                                .subtract(newAmountBalance)
+            if ((now.toLocalDate().isAfter(enableDate) || now.toLocalDate().equals(enableDate))) {
+                trx.setValid(trx.getOriginalAmountBalance().longValue() > awardPeriod.getMinAmount().longValue());
+            }
+            if(trx.getValid() || trx.getValid() == null) {
+                amountBalanceMap.compute(trx.getUniqueCorrelationKey(), (key, oldValue) -> {
+                    BigDecimal oldAmountBalance = oldValue == null ? trx.getAmountBalance() : oldValue;
+                    BigDecimal newAmountBalance = oldAmountBalance.subtract(trx.getAmount());
+                    CitizenRanking.CitizenRankingBuilder rankingBuilder = CitizenRanking.builder()
+                            .fiscalCode(trx.getFiscalCode())
+                            .awardPeriodId(awardPeriod.getAwardPeriodId())
+                            .updateDate(now)
+                            .updateUser(RankingProcessorService.PROCESS_NAME);
+                    if (newAmountBalance.compareTo(BigDecimal.ZERO) < 0) {
+                        throw new IllegalStateException(String.format("Negative amount balance for transaction with idTrxAcquirer = %s, acquirerCode = %s, acquirerId = %s, trxDate = %s, correlationId = %s",
+                                trx.getIdTrxAcquirer(),
+                                trx.getAcquirerCode(),
+                                trx.getAcquirerId(),
+                                trx.getTrxDate(),
+                                trx.getCorrelationId()));
+                    } else if (newAmountBalance.compareTo(BigDecimal.ZERO) == 0) {
+                        BigDecimal actualScore = trx.getAmount()
                                 .multiply(negativeCashbackMultiplier)
                                 .setScale(2, ROUND_HALF_DOWN);
+                        trx.setScore(actualScore);
+                        rankingBuilder.totalCashback(actualScore)
+                                .transactionNumber(-1L);
+                        rankingMap.merge(trx.getFiscalCode(), rankingBuilder.build(), CASHBACK_MAPPER);
+                    } else if (newAmountBalance.compareTo(maxTrxEval) < 0) {
+                        BigDecimal actualScore;
+                        if (oldAmountBalance.compareTo(maxTrxEval) > 0) {
+                            actualScore = maxTrxEval
+                                    .subtract(newAmountBalance)
+                                    .multiply(negativeCashbackMultiplier)
+                                    .setScale(2, ROUND_HALF_DOWN);
+                        } else {
+                            actualScore = trx.getAmount()
+                                    .multiply(negativeCashbackMultiplier)
+                                    .setScale(2, ROUND_HALF_DOWN);
+                        }
+                        trx.setScore(actualScore);
+                        rankingBuilder.transactionNumber(0L)
+                                .totalCashback(actualScore);
+                        rankingMap.merge(trx.getFiscalCode(), rankingBuilder.build(), CASHBACK_MAPPER);
                     } else {
-                        actualScore = trx.getAmount()
-                                .multiply(negativeCashbackMultiplier)
-                                .setScale(2, ROUND_HALF_DOWN);
+                        trx.setScore(BigDecimal.ZERO);
                     }
-                    trx.setScore(actualScore);
-                    rankingBuilder.transactionNumber(0L)
-                            .totalCashback(actualScore);
-                    rankingMap.merge(trx.getFiscalCode(), rankingBuilder.build(), CASHBACK_MAPPER);
-                } else {
-                    trx.setScore(BigDecimal.ZERO);
-                }
-                return newAmountBalance;
-            });
+                    return newAmountBalance;
+                });
+            }
         });
 
         return rankingMap.values();
+    }
+
+
+    @Autowired
+    private void setLocalDate(@Value(value = "${ranking-processor.enabledDate}")
+                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate enableDate) {
+        this.enableDate = enableDate;
     }
 
 }

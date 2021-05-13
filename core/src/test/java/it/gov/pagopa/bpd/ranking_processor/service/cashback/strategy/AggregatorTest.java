@@ -67,6 +67,7 @@ public abstract class AggregatorTest {
                 .awardPeriodId(1L)
                 .maxTransactionEvaluated(150L)
                 .cashbackPercentage(10)
+                .minAmount(BigDecimal.valueOf(1))
                 .build();
     }
 
