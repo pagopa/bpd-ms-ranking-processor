@@ -2,6 +2,7 @@ package it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.Map;
 
 public abstract class PartialTransferAggregatorTest extends AggregatorTest {
@@ -12,8 +13,8 @@ public abstract class PartialTransferAggregatorTest extends AggregatorTest {
     }
 
     @Override
-    protected AggregatorStrategy getAggregatorInstance(ExecutionStrategyFactory executionStrategyFactoryMock) {
-        return new PartialTransferAggregator(executionStrategyFactoryMock);
+    protected AggregatorStrategy getAggregatorInstance(ExecutionStrategyFactory executionStrategyFactoryMock, LocalDate localDate) {
+        return new PartialTransferAggregator(executionStrategyFactoryMock, getEnabledDate());
     }
 
     protected void fillExpectationMap(Map<String, Expectation> fiscalCode2ExpectationMap,

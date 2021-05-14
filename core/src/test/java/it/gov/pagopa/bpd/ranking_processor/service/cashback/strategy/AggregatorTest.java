@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.Collections;
@@ -29,11 +30,11 @@ public abstract class AggregatorTest {
         ExecutionStrategyFactory executionStrategyFactoryMock = mock(ExecutionStrategyFactory.class);
         when(executionStrategyFactoryMock.create())
                 .thenReturn(executionStrategy);
-        aggregator = getAggregatorInstance(executionStrategyFactoryMock);
+        aggregator = getAggregatorInstance(executionStrategyFactoryMock, getEnabledDate());
     }
 
 
-    protected abstract AggregatorStrategy getAggregatorInstance(ExecutionStrategyFactory executionStrategyFactoryMock);
+    protected abstract AggregatorStrategy getAggregatorInstance(ExecutionStrategyFactory executionStrategyFactoryMock, LocalDate localDate);
 
     protected static WinningTransaction createTrx(BigDecimal maxCashbackPerTrx, BigDecimal originalAmountBalance, BigDecimal amount, String operationType, int bias) {
         BigDecimal score = amount.min(maxCashbackPerTrx)
@@ -49,6 +50,8 @@ public abstract class AggregatorTest {
                 .fiscalCode("fiscal_code_s_" + bias)
                 .amount(amount)
                 .score("01".equals(operationType) ? score.negate() : score)
+                .originalAmountBalance(originalAmountBalance)
+                .valid(true)
                 .build();
     }
 
@@ -62,6 +65,10 @@ public abstract class AggregatorTest {
         assertEquals(0, rankings.size());
     }
 
+    protected static LocalDate getEnabledDate() {
+        return LocalDate.now();
+    }
+
     protected static AwardPeriod getAwardPeriod() {
         return AwardPeriod.builder()
                 .awardPeriodId(1L)
@@ -70,6 +77,7 @@ public abstract class AggregatorTest {
                 .minAmount(BigDecimal.valueOf(1))
                 .build();
     }
+
 
     @Data
     @AllArgsConstructor

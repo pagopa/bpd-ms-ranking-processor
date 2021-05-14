@@ -28,12 +28,15 @@ import static it.gov.pagopa.bpd.ranking_processor.service.cashback.strategy.Cash
 class CommonAggregator implements AggregatorStrategy {
 
     private final ExecutionStrategy executionStrategy;
-    private LocalDate enableDate;
+    private final LocalDate enableDate;
 
 
     @Autowired
-    public CommonAggregator(ExecutionStrategyFactory executionStrategyFactory) {
+    public CommonAggregator(ExecutionStrategyFactory executionStrategyFactory,
+                            @Value(value = "${ranking-processor.enabledDate}")
+                            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate enableDate) {
         executionStrategy = executionStrategyFactory.create();
+        this.enableDate = enableDate;
     }
 
     @Override
@@ -61,11 +64,5 @@ class CommonAggregator implements AggregatorStrategy {
         return cashbackMap.values();
     }
 
-
-    @Autowired
-    private void setLocalDate(@Value(value = "${ranking-processor.enabledDate}")
-                              @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate enableDate) {
-        this.enableDate = enableDate;
-    }
 
 }

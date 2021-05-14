@@ -7,6 +7,7 @@ import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import org.junit.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 
 import static org.junit.Assert.*;
@@ -18,8 +19,8 @@ public abstract class CommonAggregatorTest extends AggregatorTest {
     }
 
     @Override
-    protected AggregatorStrategy getAggregatorInstance(ExecutionStrategyFactory executionStrategyFactoryMock) {
-        return new CommonAggregator(executionStrategyFactoryMock);
+    protected AggregatorStrategy getAggregatorInstance(ExecutionStrategyFactory executionStrategyFactoryMock, LocalDate localDate) {
+        return new CommonAggregator(executionStrategyFactoryMock, getEnabledDate());
     }
 
 
