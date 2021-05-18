@@ -95,10 +95,10 @@ public class UpdateMilestoneCommandTest {
         verifyNoMoreInteractions(citizenRankingDaoMock);
     }
 
-    @Test
+    @Test(expected = MilestoneUpdateException.class)
     public void execute_KoMaxRetry() {
         deadlock = true;
-        deadlock = retry;
+        retry = true;
 
         updateMilestoneCommand = new UpdateMilestoneCommand(citizenRankingDaoMock, 2, 100, 10, true, 100, MAX_RETRY);
         updateMilestoneCommand.execute(null, null);
