@@ -19,10 +19,19 @@ public interface WinningTransactionDao {
 
     List<WinningTransaction> findPaymentToProcess(Long awardPeriodId, Pageable pageable);
 
+    WinningTransaction findPaymentTrxWithCorrelationId(WinningTransaction.FilterCriteria filterCriteria);
+
+    WinningTransaction findPaymentTrxWithoutCorrelationId(WinningTransaction.FilterCriteria filterCriteria);
+
+    List<WinningTransaction> findTransferToProcess(WinningTransaction.FilterCriteria filterCriteria, Pageable pageable);
+
     List<WinningTransaction> findTotalTransferToProcess(Long awardPeriodId, Pageable pageable);
 
     List<WinningTransaction> findPartialTranferToProcess(Long awardPeriodId, Pageable pageable);
 
     int[] updateProcessedTransaction(Collection<WinningTransaction> winningTransactionIds);
 
+    int[] updateUnrelatedTransfer(Collection<WinningTransaction> winningTransactions);
+
+    int[] updateUnprocessedPartialTransfer(Collection<WinningTransaction> winningTransactions);
 }

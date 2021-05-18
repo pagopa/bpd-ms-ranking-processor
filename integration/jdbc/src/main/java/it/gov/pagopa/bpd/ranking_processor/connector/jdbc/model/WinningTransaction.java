@@ -27,6 +27,9 @@ public class WinningTransaction implements Serializable {
     private String updateUser;
     private String correlationId;
     private BigDecimal amountBalance;
+    private String hpan;
+    private String merchantId;
+    private String terminalId;
 
 
     public enum TransactionType {
@@ -37,6 +40,20 @@ public class WinningTransaction implements Serializable {
 
     public String getUniqueCorrelationKey() {
         return correlationId + idTrxAcquirer + acquirerCode + acquirerId;
+    }
+
+
+    @Data
+    public static class FilterCriteria {
+        private Long awardPeriodId;
+        private OffsetDateTime updateDate;
+        private String hpan;
+        private String acquirerCode;
+        private String acquirerId;
+        private String correlationId;
+        private BigDecimal amount;
+        private String merchantId;
+        private String terminalId;
     }
 
 }

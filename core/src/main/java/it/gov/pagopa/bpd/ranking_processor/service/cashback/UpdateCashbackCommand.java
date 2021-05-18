@@ -72,33 +72,41 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
 
         for (TransactionType trxType : TransactionType.values()) {
 
-            if (TOTAL_TRANSFER.equals(trxType)
-                    && totalTransferSingleProcessEnabled
-                    && citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0) {
-                log.info("skip {}", UPDATE_CASHBACK_TOTAL_TRANSFER);
-                continue;
-            }
+            CashbackUpdateStrategy cashbackUpdateStrategy = cashbackUpdateStrategyFactory.create(trxType);
 
-            if (PARTIAL_TRANSFER.equals(trxType)
-                    && (citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0
-                    || citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_TOTAL_TRANSFER) > 0)) {
-                log.info("skip {}", UPDATE_CASHBACK_PARTIAL_TRANSFER);
-                continue;
-            }
+            if (cashbackUpdateStrategy == null) {
+                log.info("skip {}", getUpdateRankingSubProcess(trxType));
 
-            registerWorker(getUpdateRankingSubProcess(trxType), PARTIAL_TRANSFER.equals(trxType));
+            } else {
 
-            try {
-                exec(awardPeriod, trxType, stopTime);
+                if (TOTAL_TRANSFER.equals(trxType)
+                        && totalTransferSingleProcessEnabled
+                        && citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0) {
+                    log.info("skip {}", UPDATE_CASHBACK_TOTAL_TRANSFER);
+                    continue;
+                }
 
-            } catch (RuntimeException e) {
-                log.error(e.getMessage());
+                if (PARTIAL_TRANSFER.equals(trxType)
+                        && (citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0
+                        || citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_TOTAL_TRANSFER) > 0)) {
+                    log.info("skip {}", UPDATE_CASHBACK_PARTIAL_TRANSFER);
+                    continue;
+                }
+
+                registerWorker(getUpdateRankingSubProcess(trxType), PARTIAL_TRANSFER.equals(trxType));
+
+                try {
+                    exec(awardPeriod, cashbackUpdateStrategy, stopTime);
+
+                } catch (RuntimeException e) {
+                    log.error(e.getMessage());
+                    unregisterWorker(getUpdateRankingSubProcess(trxType));
+                    unregisterWorker(UPDATE_CASHBACK);
+                    throw e;
+                }
+
                 unregisterWorker(getUpdateRankingSubProcess(trxType));
-                unregisterWorker(UPDATE_CASHBACK);
-                throw e;
             }
-
-            unregisterWorker(getUpdateRankingSubProcess(trxType));
         }
 
         unregisterWorker(UPDATE_CASHBACK);
@@ -110,38 +118,31 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
     }
 
 
-    private void exec(AwardPeriod awardPeriod, TransactionType trxType, LocalTime stopTime) {
-        CashbackUpdateStrategy cashbackUpdateStrategy = cashbackUpdateStrategyFactory.create(trxType);
+    private void exec(AwardPeriod awardPeriod, CashbackUpdateStrategy cashbackUpdateStrategy, LocalTime stopTime) {
+        int trxCount = cashbackUpdateStrategy.getDataExtractionLimit();
 
-        if (cashbackUpdateStrategy == null) {
-            log.info("skip {}", getUpdateRankingSubProcess(trxType));
+        while (trxCount == cashbackUpdateStrategy.getDataExtractionLimit() && !isToStop.test(stopTime)) {
 
-        } else {
-            int trxCount = cashbackUpdateStrategy.getDataExtractionLimit();
+            SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateStrategy.getDataExtractionLimit());
+            log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
 
-            while (trxCount == cashbackUpdateStrategy.getDataExtractionLimit() && !isToStop.test(stopTime)) {
+            int retryCount = 0;
+            while (!isToStop.test(stopTime)) {
 
-                SimplePageRequest pageRequest = SimplePageRequest.of(0, cashbackUpdateStrategy.getDataExtractionLimit());
-                log.info("Start {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
+                try {
+                    trxCount = cashbackUpdateStrategy.process(awardPeriod, pageRequest);
+                    break;
 
-                int retryCount = 0;
-                while (!isToStop.test(stopTime)) {
-
-                    try {
-                        trxCount = cashbackUpdateStrategy.process(awardPeriod, pageRequest);
-                        break;
-
-                    } catch (DeadlockLoserDataAccessException | DuplicateKeyException e) {
-                        log.warn(e.getMessage());
-                        if (++retryCount > cashbackUpdateRetry) {
-                            log.error("Exceeded max retry number");
-                            return;
-                        }
+                } catch (DeadlockLoserDataAccessException | DuplicateKeyException e) {
+                    log.warn(e.getMessage());
+                    if (++retryCount > cashbackUpdateRetry) {
+                        log.error("Exceeded max retry number");
+                        return;
                     }
                 }
-
-                log.info("End {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
             }
+
+            log.info("End {} with page {}", cashbackUpdateStrategy.getClass().getSimpleName(), pageRequest);
         }
     }
 
