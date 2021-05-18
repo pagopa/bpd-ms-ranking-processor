@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -30,7 +31,7 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     public static final String UPDATE_UNPROCESSED_PARTIAL_TRANSFER_SQL = "update bpd_winning_transaction_transfer set partial_transfer_b = true, update_date_t = :updateDate, update_user_s = :updateUser where id_trx_acquirer_s = :idTrxAcquirer and acquirer_c = :acquirerCode and trx_timestamp_t = :trxDate and operation_type_c = :operationType and acquirer_id_s = :acquirerId";
     public static final String FIND_PAYMENT_TRX_WITH_CORRELATION_ID_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = ? and payment.acquirer_c = ? and payment.acquirer_id_s = ? and payment.correlation_id_s = ?";
     public static final String FIND_PAYMENT_TRX_WITHOUT_CORRELATION_ID_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = ? and payment.acquirer_c = ? and payment.acquirer_id_s = ? and payment.amount_i = ? and payment.merchant_id_s = ? and payment.terminal_id_s = ?";
-    public static final String FIND_TRANSFER_TRX_TO_PROCESS_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction_transfer transfer where transfer.award_period_id_n = ? and transfer.insert_date_t > current_timestamp - interval '%s' and coalesce(bcr.update_date_t, '1900-01-01 00:00:00.000'::timestamptz) < ? and transfer.partial_transfer_b is not true";
+    public static final String FIND_TRANSFER_TRX_TO_PROCESS_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s, correlation_id_s, hpan_s, merchant_id_s, terminal_id_s from bpd_winning_transaction_transfer transfer where transfer.award_period_id_n = ? and transfer.insert_date_t > current_timestamp - interval '%s' and coalesce(transfer.update_date_t, '1900-01-01 00:00:00.000'::timestamptz) < ? and transfer.partial_transfer_b is not true";
 
     private final String findPaymentTrxToProcessQuery;
     private final String findTotalTransferTrxToProcessQuery;
@@ -137,13 +138,21 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
             log.debug("filterCriteria = {}", filterCriteria);
         }
 
-        return jdbcTemplate.queryForObject(findPaymentTrxWithCorrelationIdQuery,
-                paymentTrxRowMapper,
-                filterCriteria.getAwardPeriodId(),
-                filterCriteria.getHpan(),
-                filterCriteria.getAcquirerCode(),
-                filterCriteria.getAcquirerId(),
-                filterCriteria.getCorrelationId());
+        WinningTransaction result;
+        try {
+            result = jdbcTemplate.queryForObject(findPaymentTrxWithCorrelationIdQuery,
+                    paymentTrxRowMapper,
+                    filterCriteria.getAwardPeriodId(),
+                    filterCriteria.getHpan(),
+                    filterCriteria.getAcquirerCode(),
+                    filterCriteria.getAcquirerId(),
+                    filterCriteria.getCorrelationId());
+
+        } catch (EmptyResultDataAccessException e) {
+            result = null;
+        }
+
+        return result;
     }
 
 
@@ -156,15 +165,23 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
             log.debug("filterCriteria = {}", filterCriteria);
         }
 
-        return jdbcTemplate.queryForObject(findPaymentTrxWithoutCorrelationIdQuery,
-                paymentTrxRowMapper,
-                filterCriteria.getAwardPeriodId(),
-                filterCriteria.getHpan(),
-                filterCriteria.getAcquirerCode(),
-                filterCriteria.getAcquirerId(),
-                filterCriteria.getAmount(),
-                filterCriteria.getMerchantId(),
-                filterCriteria.getTerminalId());
+        WinningTransaction result;
+        try {
+            result = jdbcTemplate.queryForObject(findPaymentTrxWithoutCorrelationIdQuery,
+                    paymentTrxRowMapper,
+                    filterCriteria.getAwardPeriodId(),
+                    filterCriteria.getHpan(),
+                    filterCriteria.getAcquirerCode(),
+                    filterCriteria.getAcquirerId(),
+                    filterCriteria.getAmount(),
+                    filterCriteria.getMerchantId(),
+                    filterCriteria.getTerminalId());
+
+        } catch (EmptyResultDataAccessException e) {
+            result = null;
+        }
+
+        return result;
     }
 
 
