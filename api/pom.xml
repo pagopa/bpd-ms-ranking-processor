@@ -4,12 +4,12 @@
     <parent>
         <artifactId>bpd-ms-ranking-processor</artifactId>
         <groupId>it.gov.pagopa.bpd.ms</groupId>
-        <version>poc-transfer-rc3</version>
+        <version>1.4.0-rc1</version>
     </parent>
 
     <groupId>it.gov.pagopa.bpd.ms.ranking_processor</groupId>
     <artifactId>bpd-ms-ranking-processor-api</artifactId>
-    <version>poc-transfer-rc3</version>
+    <version>1.4.0-rc1</version>
     <packaging>pom</packaging>
 
     <dependencies>
