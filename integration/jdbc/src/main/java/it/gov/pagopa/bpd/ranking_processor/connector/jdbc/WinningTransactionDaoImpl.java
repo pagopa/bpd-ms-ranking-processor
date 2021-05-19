@@ -159,23 +159,21 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
             log.debug("filterCriteria = {}", filterCriteria);
         }
 
-        WinningTransaction result;
-        try {
-            result = jdbcTemplate.queryForObject(findPaymentTrxWithoutCorrelationIdQuery,
-                    paymentTrxRowMapper,
-                    filterCriteria.getAwardPeriodId(),
-                    filterCriteria.getHpan(),
-                    filterCriteria.getAcquirerCode(),
-                    filterCriteria.getAcquirerId(),
-                    filterCriteria.getAmount(),
-                    filterCriteria.getMerchantId(),
-                    filterCriteria.getTerminalId());
+        List<WinningTransaction> result = jdbcTemplate.query(connection -> connection.prepareStatement(findPaymentTrxWithoutCorrelationIdQuery),
+                preparedStatement -> {
+                    preparedStatement.setLong(1, filterCriteria.getAwardPeriodId());
+                    preparedStatement.setString(2, filterCriteria.getHpan());
+                    preparedStatement.setString(3, filterCriteria.getAcquirerCode());
+                    preparedStatement.setString(4, filterCriteria.getAcquirerId());
+                    preparedStatement.setBigDecimal(5, filterCriteria.getAmount());
+                    preparedStatement.setString(6, filterCriteria.getMerchantId());
+                    preparedStatement.setString(7, filterCriteria.getTerminalId());
+                },
+                paymentTrxResultSetExtractor);
 
-        } catch (EmptyResultDataAccessException e) {
-            result = null;
-        }
-
-        return result;
+        return result != null && result.size() > 0
+                ? result.get(0)
+                : null;
     }
 
 
@@ -199,28 +197,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
                 },
                 transferTrxResultSetExtractor);
     }
-
-
-//    @Override
-//    public List<WinningTransaction> findTotalTransferToProcess(Long awardPeriodId, Pageable pageable) {
-//        if (log.isTraceEnabled()) {
-//            log.trace("WinningTransactionDaoImpl.findTotalTransferToProcess");
-//        }
-//        if (log.isDebugEnabled()) {
-//            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
-//        }
-//
-//        StringBuilder sql = new StringBuilder(findTotalTransferTrxToProcessQuery);
-//        managePagination(sql, pageable);
-//        manageLocking(sql);
-//
-//        return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
-//                preparedStatement -> {
-//                    preparedStatement.setLong(1, awardPeriodId);
-//                    preparedStatement.setLong(2, awardPeriodId);
-//                },
-//                totalTransferTrxResultSetExtractor);
-//    }
 
 
     @Override

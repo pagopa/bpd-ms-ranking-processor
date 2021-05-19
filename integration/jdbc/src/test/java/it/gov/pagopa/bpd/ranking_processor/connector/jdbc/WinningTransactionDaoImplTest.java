@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -96,6 +97,40 @@ public class WinningTransactionDaoImplTest extends BaseTest {
 
         Assert.assertNull(transaction);
     }
+
+    @Test
+    public void findPaymentTrxWithoutCorrelationIdOK_found() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Arrays.asList(TestUtils.mockInstance(WinningTransaction.builder().build())));
+
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        WinningTransaction transaction = winningWinningTransactionDao.findPaymentTrxWithoutCorrelationId(filterCriteria);
+
+        Assert.assertNotNull(transaction);
+    }
+
+    @Test
+    public void findPaymentTrxWithoutCorrelationIdOK_foundMoreThanOne() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Arrays.asList(TestUtils.mockInstance(WinningTransaction.builder().build(), 1), TestUtils.mockInstance(WinningTransaction.builder().build(), 1)));
+
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        WinningTransaction transaction = winningWinningTransactionDao.findPaymentTrxWithoutCorrelationId(filterCriteria);
+
+        Assert.assertNotNull(transaction);
+    }
+
+    @Test
+    public void findPaymentTrxWithoutCorrelationIdOK_notFound() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        WinningTransaction transaction = winningWinningTransactionDao.findPaymentTrxWithoutCorrelationId(filterCriteria);
+
+        Assert.assertNull(transaction);
+    }
+
 
     @Test
     public void findTransferToProcessOK_withoutPage() {
