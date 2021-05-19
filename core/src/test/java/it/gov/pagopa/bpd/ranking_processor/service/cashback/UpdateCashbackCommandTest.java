@@ -159,7 +159,7 @@ public class UpdateCashbackCommandTest {
         verify(citizenRankingDaoMock, never()).getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
-        verify(strategyFactory, never()).create(eq(TransactionType.PARTIAL_TRANSFER));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
         verify(updateStrategyMock, times(TransactionType.values().length - 1)).process(any(), any());
         verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
         verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);

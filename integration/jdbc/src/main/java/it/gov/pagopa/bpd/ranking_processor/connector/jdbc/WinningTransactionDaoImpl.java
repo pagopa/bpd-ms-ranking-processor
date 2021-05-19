@@ -34,7 +34,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     public static final String FIND_TRANSFER_TRX_TO_PROCESS_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s, correlation_id_s, hpan_s, merchant_id_s, terminal_id_s from bpd_winning_transaction_transfer transfer where transfer.award_period_id_n = ? and transfer.insert_date_t > current_timestamp - interval '%s' and coalesce(transfer.update_date_t, '1900-01-01 00:00:00.000'::timestamptz) < ? and transfer.partial_transfer_b is not true";
 
     private final String findPaymentTrxToProcessQuery;
-    private final String findTotalTransferTrxToProcessQuery;
     private final String findPartialTransferTrxToProcessQuery;
     private final String findTransferTrxToProcessQuery;
     private final String findPaymentTrxWithCorrelationIdQuery;
@@ -44,7 +43,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     private final JdbcTemplate jdbcTemplate;
     private final RowMapper<WinningTransaction> paymentTrxRowMapper = new WinningTransactionMapper();
     private final RowMapperResultSetExtractor<WinningTransaction> paymentTrxResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionMapper());
-    private final RowMapperResultSetExtractor<WinningTransaction> totalTransferTrxResultSetExtractor = paymentTrxResultSetExtractor;
     private final RowMapperResultSetExtractor<WinningTransaction> transferTrxResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionTotalTransferMapper());
     private final RowMapperResultSetExtractor<WinningTransaction> partialTransferTrxResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionPartialTransferMapper());
 
@@ -70,10 +68,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
         namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
 
         findPaymentTrxToProcessQuery = String.format("select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction where enabled_b is true and %s is not true and award_period_id_n = ? and operation_type_c != '01'",
-                elabRankingName);
-        findTotalTransferTrxToProcessQuery = String.format("select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction_transfer transfer where transfer.enabled_b is true and transfer.%s is not true and transfer.award_period_id_n = ? and transfer.operation_type_c = '01' and transfer.insert_date_t > current_timestamp - interval '%s' and exists ( select 1 from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = transfer.hpan_s and payment.acquirer_c = transfer.acquirer_c and payment.acquirer_id_s = transfer.acquirer_id_s and payment.amount_i = transfer.amount_i and ((nullif(transfer.correlation_id_s, '') is null and payment.merchant_id_s = transfer.merchant_id_s and payment.terminal_id_s = transfer.terminal_id_s) or (nullif(transfer.correlation_id_s, '') is not null and payment.correlation_id_s = transfer.correlation_id_s)))",
-                elabRankingName,
-                transferMaxDepth,
                 elabRankingName);
         updateProcessedTrxSql = String.format("update bpd_winning_transaction set %s = true, score_n = :score, update_date_t = :updateDate, update_user_s = :updateUser where id_trx_acquirer_s = :idTrxAcquirer and acquirer_c = :acquirerCode and trx_timestamp_t = :trxDate and operation_type_c = :operationType and acquirer_id_s = :acquirerId",
                 elabRankingName);
@@ -207,26 +201,26 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     }
 
 
-    @Override
-    public List<WinningTransaction> findTotalTransferToProcess(Long awardPeriodId, Pageable pageable) {
-        if (log.isTraceEnabled()) {
-            log.trace("WinningTransactionDaoImpl.findTotalTransferToProcess");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
-        }
-
-        StringBuilder sql = new StringBuilder(findTotalTransferTrxToProcessQuery);
-        managePagination(sql, pageable);
-        manageLocking(sql);
-
-        return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
-                preparedStatement -> {
-                    preparedStatement.setLong(1, awardPeriodId);
-                    preparedStatement.setLong(2, awardPeriodId);
-                },
-                totalTransferTrxResultSetExtractor);
-    }
+//    @Override
+//    public List<WinningTransaction> findTotalTransferToProcess(Long awardPeriodId, Pageable pageable) {
+//        if (log.isTraceEnabled()) {
+//            log.trace("WinningTransactionDaoImpl.findTotalTransferToProcess");
+//        }
+//        if (log.isDebugEnabled()) {
+//            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
+//        }
+//
+//        StringBuilder sql = new StringBuilder(findTotalTransferTrxToProcessQuery);
+//        managePagination(sql, pageable);
+//        manageLocking(sql);
+//
+//        return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
+//                preparedStatement -> {
+//                    preparedStatement.setLong(1, awardPeriodId);
+//                    preparedStatement.setLong(2, awardPeriodId);
+//                },
+//                totalTransferTrxResultSetExtractor);
+//    }
 
 
     @Override

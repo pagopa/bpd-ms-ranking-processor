@@ -25,7 +25,7 @@ public interface WinningTransactionDao {
 
     List<WinningTransaction> findTransferToProcess(WinningTransaction.FilterCriteria filterCriteria, Pageable pageable);
 
-    List<WinningTransaction> findTotalTransferToProcess(Long awardPeriodId, Pageable pageable);
+//    List<WinningTransaction> findTotalTransferToProcess(Long awardPeriodId, Pageable pageable);
 
     List<WinningTransaction> findPartialTranferToProcess(Long awardPeriodId, Pageable pageable);
 
