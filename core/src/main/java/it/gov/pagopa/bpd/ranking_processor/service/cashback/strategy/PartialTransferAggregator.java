@@ -59,7 +59,7 @@ class PartialTransferAggregator implements AggregatorStrategy {
                     trx.setUpdateDate(now);
                     trx.setUpdateUser(RankingProcessorService.PROCESS_NAME);
                     if ((now.toLocalDate().isAfter(enableDate) || now.toLocalDate().equals(enableDate))) {
-                        trx.setValid(trx.getOriginalAmountBalance().longValue() > awardPeriod.getMinAmount().longValue());
+                        trx.setValid(trx.getOriginalAmountBalance().doubleValue() >= awardPeriod.getMinAmount().doubleValue());
                     }
                 })
                 .filter(trx -> trx.getValid() || trx.getValid() == null)

@@ -47,7 +47,7 @@ class CommonAggregator implements AggregatorStrategy {
                     trx.setUpdateDate(now);
                     trx.setUpdateUser(RankingProcessorService.PROCESS_NAME);
                     if ((now.toLocalDate().isAfter(enableDate) || now.toLocalDate().equals(enableDate))) {
-                        trx.setValid(trx.getAmount().longValue() > awardPeriod.getMinAmount().longValue());
+                        trx.setValid(trx.getAmount().doubleValue() >= awardPeriod.getMinAmount().doubleValue());
                     }
                 })
                 .filter(trx -> trx.getValid() || trx.getValid() == null)
