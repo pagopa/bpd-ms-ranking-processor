@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Scope;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
@@ -105,7 +106,15 @@ class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
                 paymentTrx = winningTransactionDao.findPaymentTrxWithoutCorrelationId(filterCriteria);
             } else {
                 filterCriteria.setCorrelationId(transferTrx.getCorrelationId());
-                paymentTrx = winningTransactionDao.findPaymentTrxWithCorrelationId(filterCriteria);
+                try {
+                    paymentTrx = winningTransactionDao.findPaymentTrxWithCorrelationId(filterCriteria);
+                } catch (IncorrectResultSizeDataAccessException e) {
+                    log.warn(String.format("Failed to match transfer with correlation_id '%s': %s",
+                            transferTrx.getCorrelationId(),
+                            e.getMessage()));
+                    transferTrx.setParked(true);
+                    paymentTrx = null;
+                }
             }
 
             if (paymentTrx == null) {

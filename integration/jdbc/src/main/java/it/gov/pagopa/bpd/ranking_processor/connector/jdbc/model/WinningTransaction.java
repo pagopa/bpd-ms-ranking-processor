@@ -30,6 +30,7 @@ public class WinningTransaction implements Serializable {
     private String hpan;
     private String merchantId;
     private String terminalId;
+    private Boolean parked;
 
 
     public enum TransactionType {
