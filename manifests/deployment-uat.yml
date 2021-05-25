@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bpdmsrankingprocessorpoc
+  name: bpdmsrankingprocessor
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: bpdmsrankingprocessorpoc
+      app: bpdmsrankingprocessor
   template:
     metadata:
       labels:
-        app: bpdmsrankingprocessorpoc
+        app: bpdmsrankingprocessor
       annotations:
         prometheus.io/path: /actuator/prometheus
         prometheus.io/port: '8080'
         prometheus.io/scrape: 'true'
     spec:
       containers:
-        - name: bpdmsrankingprocessorpoc
+        - name: bpdmsrankingprocessor
           image: cstaruatregistry.azurecr.io/bpdmsrankingprocessor
           ports:
             - containerPort: 8080
@@ -27,7 +27,7 @@ spec:
             - configMapRef:
                 name: eventhub-logging
             - configMapRef:
-                name: bpdmsrankingprocessorpoc
+                name: bpdmsrankingprocessor
             - configMapRef:
                 name: rest-client
             - configMapRef:
@@ -55,7 +55,7 @@ spec:
               path: /actuator/health
               port: 8080
               scheme: HTTP
-            initialDelaySeconds: 80
+            initialDelaySeconds: 60
             timeoutSeconds: 5
             periodSeconds: 10
             successThreshold: 1
