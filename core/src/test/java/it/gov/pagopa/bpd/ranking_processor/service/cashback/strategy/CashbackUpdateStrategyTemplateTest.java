@@ -31,18 +31,18 @@ import static org.mockito.Mockito.*;
 
 public abstract class CashbackUpdateStrategyTemplateTest {
 
-    private static final int LIMIT = 5;
+    protected static final int LIMIT = 5;
 
     protected final WinningTransactionDao winningTransactionDaoMock;
     protected final CitizenRankingDao citizenRankingDaoMock;
     protected final AggregatorStrategy aggregatorStrategy;
     protected final BeanFactory beanFactoryMock;
 
-    private final Appender mockedAppender;
-    private final ArgumentCaptor<LoggingEvent> loggingEventCaptor;
+    protected final Appender mockedAppender;
+    protected final ArgumentCaptor<LoggingEvent> loggingEventCaptor;
 
-    private Error error;
-    private EnumSet<MissRecord> missRecords = EnumSet.noneOf(MissRecord.class);
+    protected Error error;
+    protected EnumSet<MissRecord> missRecords = EnumSet.noneOf(MissRecord.class);
 
     public CashbackUpdateStrategyTemplateTest() {
         this.winningTransactionDaoMock = Mockito.mock(WinningTransactionDao.class);
@@ -66,7 +66,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
         initMocks();
     }
 
-    private void initMocks() {
+    protected void initMocks() {
         Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
         root.setLevel(Level.INFO);
         root.addAppender(mockedAppender);
@@ -80,17 +80,6 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                     for (int i = 0; i < pageable.getPageSize(); i++) {
                         transactions.add(TestUtils.mockInstance(WinningTransaction.builder()
                                 .operationType("00")
-                                .build(), i, "setOperationType"));
-                    }
-                    return transactions;
-                });
-        when(winningTransactionDaoMock.findTotalTransferToProcess(anyLong(), any(Pageable.class)))
-                .thenAnswer(invocationOnMock -> {
-                    Pageable pageable = invocationOnMock.getArgument(1, Pageable.class);
-                    List<WinningTransaction> transactions = new ArrayList<>(pageable.getPageSize());
-                    for (int i = 0; i < pageable.getPageSize(); i++) {
-                        transactions.add(TestUtils.mockInstance(WinningTransaction.builder()
-                                .operationType("01")
                                 .build(), i, "setOperationType"));
                     }
                     return transactions;
@@ -196,6 +185,11 @@ public abstract class CashbackUpdateStrategyTemplateTest {
         missRecords.clear();
     }
 
+
+    protected void verifyExtraConditions() {
+    }
+
+
     @Test
     public void process_OK_updateCashbackMiss() {
         missRecords.add(MissRecord.UPDATE_CASHBACK);
@@ -213,6 +207,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                 .insertCashback(anyList());
         BDDMockito.verify(winningTransactionDaoMock, times(1))
                 .updateProcessedTransaction(anyCollection());
+        verifyExtraConditions();
         verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
     }
 
@@ -241,6 +236,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
             verifyTrxToProcess(pageRequest, awardPeriod);
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .updateCashback(anyList());
+            verifyExtraConditions();
             verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
 
             throw e;
@@ -275,6 +271,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                     .updateCashback(anyList());
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .insertCashback(anyList());
+            verifyExtraConditions();
             verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
 
             throw e;
@@ -309,6 +306,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                     .updateCashback(anyList());
             BDDMockito.verify(citizenRankingDaoMock, times(1))
                     .insertCashback(anyList());
+            verifyExtraConditions();
             verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
 
             throw e;
@@ -342,6 +340,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                     .updateCashback(anyList());
             BDDMockito.verify(winningTransactionDaoMock, times(1))
                     .updateProcessedTransaction(anyCollection());
+            verifyExtraConditions();
             verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
 
             throw e;
@@ -375,6 +374,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                     .updateCashback(anyList());
             BDDMockito.verify(winningTransactionDaoMock, times(1))
                     .updateProcessedTransaction(anyCollection());
+            verifyExtraConditions();
             verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
 
             throw e;
@@ -382,14 +382,14 @@ public abstract class CashbackUpdateStrategyTemplateTest {
     }
 
 
-    private enum Error {
+    protected enum Error {
         UPDATE_CASHBACK,
         INSERT_CASHBACK,
         UPDATE_TRANSACTION
     }
 
 
-    private enum MissRecord {
+    protected enum MissRecord {
         UPDATE_CASHBACK,
         INSERT_CASHBACK,
         UPDATE_TRANSACTION

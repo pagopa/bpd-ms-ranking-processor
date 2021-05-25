@@ -1,11 +1,13 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
 
+import eu.sia.meda.util.TestUtils;
 import it.gov.pagopa.bpd.common.BaseTest;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.*;
 
@@ -13,11 +15,13 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 
 public class WinningTransactionDaoImplTest extends BaseTest {
 
@@ -56,23 +60,88 @@ public class WinningTransactionDaoImplTest extends BaseTest {
     }
 
     @Test
-    public void findTotalTransferToProcessOK_withPage() {
+    public void findTransferToProcessOK_withPage() {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        List<WinningTransaction> transactions = winningWinningTransactionDao.findTotalTransferToProcess(1L,
+        WinningTransaction.FilterCriteria filterCriteria = new WinningTransaction.FilterCriteria();
+        filterCriteria.setAwardPeriodId(1L);
+        filterCriteria.setUpdateDate(OffsetDateTime.now());
+
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findTransferToProcess(filterCriteria,
                 PageRequest.of(0, 1));
 
         Assert.assertNotNull(transactions);
         Assert.assertEquals(0, transactions.size());
     }
 
+
     @Test
-    public void findTotalTransferToProcessOK_withoutPage() {
+    public void findPaymentTrxWithCorrelationIdOK_found() {
+        Mockito.when(jdbcTemplateMock.queryForObject(anyString(), any(RowMapper.class), any()))
+                .thenReturn(TestUtils.mockInstance(WinningTransaction.builder().build()));
+
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        WinningTransaction transaction = winningWinningTransactionDao.findPaymentTrxWithCorrelationId(filterCriteria);
+
+        Assert.assertNotNull(transaction);
+    }
+
+    @Test
+    public void findPaymentTrxWithCorrelationIdOK_notFound() {
+        doThrow(EmptyResultDataAccessException.class)
+                .when(jdbcTemplateMock).queryForObject(anyString(), any(RowMapper.class), any());
+
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        WinningTransaction transaction = winningWinningTransactionDao.findPaymentTrxWithCorrelationId(filterCriteria);
+
+        Assert.assertNull(transaction);
+    }
+
+    @Test
+    public void findPaymentTrxWithoutCorrelationIdOK_found() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Arrays.asList(TestUtils.mockInstance(WinningTransaction.builder().build())));
+
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        WinningTransaction transaction = winningWinningTransactionDao.findPaymentTrxWithoutCorrelationId(filterCriteria);
+
+        Assert.assertNotNull(transaction);
+    }
+
+    @Test
+    public void findPaymentTrxWithoutCorrelationIdOK_foundMoreThanOne() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Arrays.asList(TestUtils.mockInstance(WinningTransaction.builder().build(), 1), TestUtils.mockInstance(WinningTransaction.builder().build(), 1)));
+
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        WinningTransaction transaction = winningWinningTransactionDao.findPaymentTrxWithoutCorrelationId(filterCriteria);
+
+        Assert.assertNotNull(transaction);
+    }
+
+    @Test
+    public void findPaymentTrxWithoutCorrelationIdOK_notFound() {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        List<WinningTransaction> transactions = winningWinningTransactionDao.findTotalTransferToProcess(1L,
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        WinningTransaction transaction = winningWinningTransactionDao.findPaymentTrxWithoutCorrelationId(filterCriteria);
+
+        Assert.assertNull(transaction);
+    }
+
+
+    @Test
+    public void findTransferToProcessOK_withoutPage() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.emptyList());
+
+        WinningTransaction.FilterCriteria filterCriteria = new WinningTransaction.FilterCriteria();
+        filterCriteria.setAwardPeriodId(1L);
+        filterCriteria.setUpdateDate(OffsetDateTime.now());
+
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findTransferToProcess(filterCriteria,
                 null);
 
         Assert.assertNotNull(transactions);

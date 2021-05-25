@@ -44,6 +44,7 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
         this.aggregatorStrategy = aggregatorStrategy;
     }
 
+
     @Override
     @Transactional("chainedTransactionManager")
     public int process(AwardPeriod awardPeriod, SimplePageRequest simplePageRequest) {
@@ -57,8 +58,26 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
         Pageable pageRequest = PageRequest.of(simplePageRequest.getPage(), simplePageRequest.getSize());
         List<WinningTransaction> transactions = retrieveTransactions(awardPeriod.getAwardPeriodId(), pageRequest);
 
-        List<CitizenRanking> rankings = new ArrayList<>(aggregatorStrategy.aggregate(awardPeriod, transactions));
+        List<CitizenRanking> rankings = aggregate(awardPeriod, transactions);
 
+        updateCashback(rankings);
+
+        if (!transactions.isEmpty()) {
+            int[] affectedRows = winningTransactionDao.updateProcessedTransaction(transactions);
+            checkErrors(transactions.size(), affectedRows, "updateProcessedTransaction");
+        }
+
+        return transactions.size();
+    }
+
+
+    protected List<CitizenRanking> aggregate(AwardPeriod awardPeriod, List<WinningTransaction> transactions) {
+        List<CitizenRanking> rankings = new ArrayList<>(aggregatorStrategy.aggregate(awardPeriod, transactions));
+        return rankings;
+    }
+
+
+    protected void updateCashback(List<CitizenRanking> rankings) {
         if (!rankings.isEmpty()) {
             int[] affectedRows = citizenRankingDao.updateCashback(rankings);
 
@@ -87,20 +106,13 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
                 }
             }
         }
-
-        if (!transactions.isEmpty()) {
-            int[] affectedRows = winningTransactionDao.updateProcessedTransaction(transactions);
-            checkErrors(transactions.size(), affectedRows, "updateProcessedTransaction");
-        }
-
-        return transactions.size();
     }
 
 
     protected abstract List<WinningTransaction> retrieveTransactions(long awardPeriodId, Pageable pageable);
 
 
-    private void checkErrors(int statementsCount, int[] affectedRows, String operationName) {
+    protected void checkErrors(int statementsCount, int[] affectedRows, String operationName) {
         if (affectedRows.length != statementsCount) {
             String message = String.format(ERROR_MESSAGE_TEMPLATE, operationName, affectedRows.length, statementsCount);
             log.error(message);
