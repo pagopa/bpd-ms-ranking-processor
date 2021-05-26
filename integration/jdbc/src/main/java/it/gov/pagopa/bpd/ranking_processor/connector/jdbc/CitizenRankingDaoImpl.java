@@ -41,6 +41,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     private static final String UPDATE_MILESTONE_SQL_TEMPLATE = "SELECT * from %s(?, ?, ?)";
     private static final String UPDATE_RANKING_PROCESSOR_LOCK_SQL = "update bpd_citizen.%s set worker_count = worker_count + :value, status = case when (worker_count + :value) = 0 then 'IDLE' else 'IN_PROGRESS' end, update_user = :updateUser, update_date = CURRENT_TIMESTAMP where process_id = :processId";
     private static final String GET_WORKER_COUNT_SQL = "select worker_count from bpd_ranking_processor_lock where process_id = ?";
+    private static final String RESET_CASHBACK_SQL_TEMPLATE = "update %s bcr set cashback_n = 0, transaction_n = 0, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = ? and award_period_id_n = ? and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)";
 
     private final String updateCashbackSql;
     private final String updateRankingSql;
@@ -48,6 +49,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     private final String updateRankingProcessorLockSql;
     private final String findAllByAwardPeriodAndUpdateDateSql;
     private final String updateMilestoneSql;
+    private final String resetCashbackSql;
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final RowMapperResultSetExtractor<CitizenRanking> findAllResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
@@ -100,6 +102,8 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
                 rankingLockTableName);
         updateMilestoneSql = String.format(UPDATE_MILESTONE_SQL_TEMPLATE,
                 milestoneFunctionName);
+        resetCashbackSql = String.format(RESET_CASHBACK_SQL_TEMPLATE,
+                rankingTableName);
     }
 
 
@@ -335,4 +339,18 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         private String updateUser;
     }
 
+    @Override
+    public int resetCashback(String fiscalCode, Long awardPeriodId) {//TODO da testare su SIT
+        if (log.isTraceEnabled()) {
+            log.trace("CitizenRankingDaoImpl.resetCashback");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("fiscalCode = {}, awardPeriodId = {}", fiscalCode, awardPeriodId);
+        }
+
+        return jdbcTemplate.update(resetCashbackSql, preparedStatement -> {
+                preparedStatement.setString(1, fiscalCode);
+                preparedStatement.setLong(2, awardPeriodId);
+                });
+    }
 }

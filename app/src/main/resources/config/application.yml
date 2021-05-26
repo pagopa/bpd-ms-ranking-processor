@@ -24,3 +24,9 @@ meda:
 logging:
   level:
     it.gov.pagopa.bpd.ranking_processor: ${LOG_LEVEL_BPD_RANKING_PROCESSOR:DEBUG}
+
+check:
+  daily-payment-limit:
+    event-date: ${DAILY_PAYMENT_LIMIT_AFTER_EVENT_DATE:2021-06-01}
+    valid-payment: ${DAILY_PAYMENT_LIMIT_VALID_PAYMENT:5}
+    thread-pool: ${DAILY_PAYMENT_LIMIT_THREAD_POOL:1}

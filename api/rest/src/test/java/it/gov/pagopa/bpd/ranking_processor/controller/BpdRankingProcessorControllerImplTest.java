@@ -7,6 +7,7 @@ import eu.sia.meda.error.handler.MedaExceptionHandler;
 import eu.sia.meda.error.service.impl.LocalErrorManagerServiceImpl;
 import it.gov.pagopa.bpd.ranking_processor.controller.model.RankingProcessorDto;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
+import it.gov.pagopa.bpd.ranking_processor.service.DailyPaymentLimitDetectorService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.BDDMockito;
@@ -52,6 +53,9 @@ public class BpdRankingProcessorControllerImplTest {
     @MockBean
     private RankingProcessorService rankingProcessorService;
 
+    @MockBean
+    private DailyPaymentLimitDetectorService dailyPaymentLimitDetectorService;
+
     @PostConstruct
     public void initMocks() {
         BDDMockito.doAnswer(invocationOnMock -> {
@@ -61,6 +65,14 @@ public class BpdRankingProcessorControllerImplTest {
             return null;
         }).when(rankingProcessorService)
                 .process(Mockito.anyLong(), Mockito.any());
+
+        BDDMockito.doAnswer(invocationOnMock -> {
+            Long awardPeriodId = invocationOnMock.getArgument(0, Long.class);
+            if (awardPeriodId == -1L)
+                throw new RuntimeException("Test Error");
+            return null;
+        }).when(dailyPaymentLimitDetectorService)
+                .checkPaymentLimit(Mockito.anyLong());
     }
 
     @Test
@@ -114,6 +126,29 @@ public class BpdRankingProcessorControllerImplTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(MockMvcResultMatchers.status().is4xxClientError())
                 .andReturn();
+    }
+
+    @Test
+    public void dailyPaymentLimit_OK() throws Exception {
+        mvc.perform(MockMvcRequestBuilders
+                .get(URL_TEMPLATE_PREFIX + "/check/daily-payment-limit")
+                .param("awardPeriodId", "1"))
+                .andExpect(MockMvcResultMatchers.status().is2xxSuccessful());
+    }
+
+    @Test
+    public void dailyPaymentLimit_KOInvalidRequest() throws Exception {
+        mvc.perform(MockMvcRequestBuilders
+                .get(URL_TEMPLATE_PREFIX + "/check/daily-payment-limit"))
+                .andExpect(MockMvcResultMatchers.status().is4xxClientError());
+    }
+
+    @Test
+    public void dailyPaymentLimit_KOProcess() throws Exception {
+        mvc.perform(MockMvcRequestBuilders
+                .get(URL_TEMPLATE_PREFIX + "/check/daily-payment-limit")
+                .param("awardPeriodId", "-1"))
+                .andExpect(MockMvcResultMatchers.status().is5xxServerError());
     }
 
 }

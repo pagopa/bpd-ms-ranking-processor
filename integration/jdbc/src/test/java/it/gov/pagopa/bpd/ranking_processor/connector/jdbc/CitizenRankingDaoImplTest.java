@@ -128,6 +128,14 @@ public class CitizenRankingDaoImplTest extends BaseTest {
     }
 
 
+    @Test
+    public void resetCashbackOK() {
+        int result = citizenRankingDao.resetCashback("fiscalCode", -1L);
+
+        Assert.assertEquals(0, result);
+    }
+
+
     public static class CitizenRankingMapperTest {
 
         private final CitizenRankingDaoImpl.CitizenRankingMapper citizenRankingMapper;

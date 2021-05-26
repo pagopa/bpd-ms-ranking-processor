@@ -1,5 +1,6 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
+import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.ActiveUserWinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -19,9 +20,12 @@ import org.springframework.stereotype.Service;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -32,6 +36,12 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     public static final String FIND_PAYMENT_TRX_WITH_CORRELATION_ID_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = ? and payment.acquirer_c = ? and payment.acquirer_id_s = ? and payment.correlation_id_s = ?";
     public static final String FIND_PAYMENT_TRX_WITHOUT_CORRELATION_ID_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = ? and payment.acquirer_c = ? and payment.acquirer_id_s = ? and payment.amount_i = ? and payment.merchant_id_s = ? and payment.terminal_id_s = ?";
     public static final String FIND_TRANSFER_TRX_TO_PROCESS_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s, correlation_id_s, hpan_s, merchant_id_s, terminal_id_s from bpd_winning_transaction_transfer transfer where transfer.award_period_id_n = ? and transfer.insert_date_t > current_timestamp - interval '%s' and coalesce(transfer.update_date_t, '1900-01-01 00:00:00.000'::timestamptz) < ? and transfer.partial_transfer_b is not true and transfer.parked_b is not true";
+    public static final String FIND_ACTIVE_USERS_SINCE_LAST_DETECTOR = "select bwt.fiscal_code_s, bwt.merchant_id_s, date_trunc('day', trx_timestamp_t) as payment_day, max(insert_date_t) from bpd_winning_transaction.bpd_winning_transaction bwt where insert_date_t > ( select bct.last_execution from bpd_winning_transaction.bpd_check_transaction bct where bct.id = 'DAILY_PAYMENT_LIMIT' ) and bwt.award_period_id_n = ? and bwt.operation_type_c != '01' and valid_b is not false group by (fiscal_code_s, merchant_id_s, date_trunc('day', trx_timestamp_t))";
+    public static final String FIND_TOP_VALID_WINNING_TRANSACTIONS = "select fiscal_code_s, id_trx_acquirer_s, acquirer_c, trx_timestamp_t, operation_type_c, acquirer_id_s from bpd_winning_transaction.bpd_winning_transaction bwt where bwt.award_period_id_n = ? and bwt.fiscal_code_s = ? and bwt.operation_type_c != '01' and valid_b is not false and merchant_id_s = ? and trx_timestamp_t between ? and ? order by amount_i desc limit ?+1";
+    public static final String UPDATE_DETECTOR_SET_LAST_EXECUTION = "update bpd_winning_transaction.bpd_check_transaction set last_execution = ? where bct.id = 'DAILY_PAYMENT_LIMIT'";
+    public static final String UPDATE_INVALIDATE_TRANSACTIONS = "update bpd_winning_transaction.bpd_winning_transaction set valid_b = false where fiscal_code_s = ? and trx_timestamp_t between ? and ? and merchant_id_s = ? and award_period_id_n = ?";
+    public static final String UPDATE_VALIDATE_TOP_TRANSACTIONS = "update bpd_winning_transaction.bpd_winning_transaction set valid_b = true where id_trx_acquirer_s = :idTrxAcquirer and acquirer_c = :acquirerCode and trx_timestamp_t = :trxDate and operation_type_c = :operationType and acquirer_id_s = :acquirerId and fiscal_code_s = :fiscalCode";
+    public static final String UPDATE_USER_TRANSACTIONS_ELAB_FALSE = "update bpd_winning_transaction.bpd_winning_transaction set elab_ranking_b = false where fiscal_code_s = ? and valid_b = true and award_period_id_n = ?";
 
     private final String findPaymentTrxToProcessQuery;
     private final String findPartialTransferTrxToProcessQuery;
@@ -45,6 +55,8 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     private final RowMapperResultSetExtractor<WinningTransaction> paymentTrxResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionMapper());
     private final RowMapperResultSetExtractor<WinningTransaction> transferTrxResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionTotalTransferMapper());
     private final RowMapperResultSetExtractor<WinningTransaction> partialTransferTrxResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionPartialTransferMapper());
+    private final RowMapperResultSetExtractor<ActiveUserWinningTransaction> activeUsersResultSetExtractor = new RowMapperResultSetExtractor<>(new ActiveUsersMapper());
+    private final RowMapperResultSetExtractor<WinningTransaction> validTransactionsResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionValidMapper());
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final boolean lockEnabled;
@@ -259,6 +271,99 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
         return namedParameterJdbcTemplate.batchUpdate(UPDATE_UNPROCESSED_PARTIAL_TRANSFER_SQL, batchValues);
     }
 
+    @Override
+    public List<ActiveUserWinningTransaction> findActiveUsersSinceLastDetector(Long awardPeriodId) {//TODO da testare su SIT
+        if (log.isTraceEnabled()) {
+            log.trace("WinningTransactionDaoImpl.findActiveUsersSinceLastDetector");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("awardPeriodId = {}", awardPeriodId);
+        }
+
+
+        return jdbcTemplate.query(connection -> connection.prepareStatement(FIND_ACTIVE_USERS_SINCE_LAST_DETECTOR),
+                preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
+                activeUsersResultSetExtractor);
+    }
+
+    @Override
+    public List<WinningTransaction> findTopValidWinningTransactions(Long awardPeriodId, int validPayments, String fiscalCode, String merchant, LocalDate paymentDate) {//TODO da testare su SIT
+        if (log.isTraceEnabled()) {
+            log.trace("WinningTransactionDaoImpl.findTopValidWinningTransactions");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("awardPeriodId = {}, validPayments = {}, fiscalCode = {}, merchant = {}, paymentDate = {}", awardPeriodId, validPayments, fiscalCode, merchant, paymentDate);
+        }
+
+        List<WinningTransaction> winningTransactionList = jdbcTemplate.query(FIND_TOP_VALID_WINNING_TRANSACTIONS,
+                validTransactionsResultSetExtractor,
+                    awardPeriodId,
+                    fiscalCode,
+                    merchant,
+                    paymentDate,
+                    paymentDate.plusDays(1),
+                    validPayments);
+
+        if(null==winningTransactionList || winningTransactionList.size()<=validPayments){
+            return Collections.emptyList();
+        }
+        winningTransactionList.remove(validPayments);
+        return winningTransactionList;
+    }
+
+    @Override
+    public int updateDetectorLastExecution(OffsetDateTime maxInsertDate) {//TODO da testare su SIT
+        if (log.isTraceEnabled()) {
+            log.trace("WinningTransactionDaoImpl.updateDetectorLastExecution");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("maxInsertDate = {}", maxInsertDate);
+        }
+        return jdbcTemplate.update(UPDATE_DETECTOR_SET_LAST_EXECUTION, preparedStatement -> preparedStatement.setObject(1, maxInsertDate));
+    }
+
+    @Override
+    public int updateInvalidateTransactions(String fiscalCode, LocalDate paymentDate, String merchant, Long awardPeriodId) {//TODO da testare su SIT
+        if (log.isTraceEnabled()) {
+            log.trace("WinningTransactionDaoImpl.updateInvalidateTransactions");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("fiscalCode = {}, paymentDate = {}, merchant = {}, awardPeriodId = {}", fiscalCode, paymentDate, merchant, awardPeriodId);
+        }
+        return jdbcTemplate.update(UPDATE_INVALIDATE_TRANSACTIONS,
+                fiscalCode,
+                paymentDate,
+                paymentDate.plusDays(1),
+                merchant,
+                awardPeriodId);
+    }
+
+    @Override
+    public int[] updateSetValidTransactions(List<WinningTransaction> winningTransactionList) {//TODO da testare su SIT
+        if (log.isTraceEnabled()) {
+            log.trace("WinningTransactionDaoImpl.updateSetValidTransactions");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("winningTransactionList = {}", winningTransactionList);
+        }
+
+        SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(winningTransactionList);
+        return namedParameterJdbcTemplate.batchUpdate(UPDATE_VALIDATE_TOP_TRANSACTIONS, batchValues);
+    }
+
+    @Override
+    public int updateUserTransactionsElab(String fiscalCode, Long awardPeriodId) {//TODO da testare su SIT
+        if (log.isTraceEnabled()) {
+            log.trace("WinningTransactionDaoImpl.updateUserTransactionsElab");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("fiscalCode = {}, awardPeriodId = {}", fiscalCode, awardPeriodId);
+        }
+        return jdbcTemplate.update(UPDATE_USER_TRANSACTIONS_ELAB_FALSE, preparedStatement ->{
+                        preparedStatement.setString(1, fiscalCode);
+                        preparedStatement.setLong(2, awardPeriodId);
+                });
+    }
 
     @Slf4j
     static class WinningTransactionMapper implements RowMapper<WinningTransaction> {
@@ -301,6 +406,35 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
             winningTransaction.setAmountBalance(rs.getBigDecimal("amount_balance"));
             winningTransaction.setOriginalAmountBalance(rs.getBigDecimal("original_amount_balance"));
             return winningTransaction;
+        }
+    }
+
+    @Slf4j
+    static class ActiveUsersMapper implements RowMapper<ActiveUserWinningTransaction> {
+
+        @Override
+        public ActiveUserWinningTransaction mapRow(ResultSet rs, int rowNum) throws SQLException {
+            return ActiveUserWinningTransaction.builder()
+                    .fiscalCode(rs.getString("fiscal_code_s"))
+                    .merchantId(rs.getString("merchant_id_s"))
+                    .trxDate(rs.getObject("payment_day", OffsetDateTime.class).toLocalDate())
+                    .insertDate(rs.getObject("insert_date_t",OffsetDateTime.class))
+                    .build();
+        }
+    }
+
+    @Slf4j
+    static class WinningTransactionValidMapper implements RowMapper<WinningTransaction> {
+
+        public WinningTransaction mapRow(ResultSet rs, int rowNum) throws SQLException {
+            return WinningTransaction.builder()
+                    .idTrxAcquirer(rs.getString("id_trx_acquirer_s"))
+                    .acquirerCode(rs.getString("acquirer_c"))
+                    .trxDate(rs.getObject("trx_timestamp_t", OffsetDateTime.class))
+                    .operationType(rs.getString("operation_type_c"))
+                    .acquirerId(rs.getString("acquirer_id_s"))
+                    .fiscalCode(rs.getString("fiscal_code_s"))
+                    .build();
         }
     }
 

@@ -1,11 +1,16 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc;
 
+import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.ActiveUserWinningTransaction;
 import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Data Access Object to manage the operations to the database related to {@link WinningTransaction} model
@@ -34,4 +39,16 @@ public interface WinningTransactionDao {
     int[] updateUnrelatedTransfer(Collection<WinningTransaction> winningTransactions);
 
     int[] updateUnprocessedPartialTransfer(Collection<WinningTransaction> winningTransactions);
+
+    List<ActiveUserWinningTransaction> findActiveUsersSinceLastDetector(Long awardPeriodId);
+
+    List<WinningTransaction> findTopValidWinningTransactions(Long awardPeriodId, int validPayments, String fiscalCode, String merchant, LocalDate paymentDate);
+
+    int updateDetectorLastExecution(OffsetDateTime maxInsertDate);
+
+    int updateInvalidateTransactions(String fiscalCode, LocalDate paymentDate, String merchant, Long awardPeriodId);
+
+    int[] updateSetValidTransactions(List<WinningTransaction> winningTransactionList);
+
+    int updateUserTransactionsElab(String fiscalCode, Long awardPeriodId);
 }
