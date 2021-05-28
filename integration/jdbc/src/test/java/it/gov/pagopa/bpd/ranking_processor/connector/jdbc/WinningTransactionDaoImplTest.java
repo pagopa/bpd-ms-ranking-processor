@@ -31,7 +31,7 @@ public class WinningTransactionDaoImplTest extends BaseTest {
 
     public WinningTransactionDaoImplTest() {
         jdbcTemplateMock = Mockito.mock(JdbcTemplate.class);
-        winningWinningTransactionDao = new WinningTransactionDaoImpl(jdbcTemplateMock, true, "elab_ranking_b", "1 month");
+        winningWinningTransactionDao = new WinningTransactionDaoImpl(jdbcTemplateMock, true, "elab_ranking_b", "1 month", "bpd_winning_transaction_transfer");
     }
 
 
@@ -179,6 +179,18 @@ public class WinningTransactionDaoImplTest extends BaseTest {
                 .thenReturn(new int[]{});
 
         int[] affectedRows = winningWinningTransactionDao.updateProcessedTransaction(Collections.emptyList());
+
+        Assert.assertNotNull(affectedRows);
+        Assert.assertEquals(0, affectedRows.length);
+    }
+
+
+    @Test
+    public void deleteTransferOK() {
+        Mockito.when(jdbcTemplateMock.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class)))
+                .thenReturn(new int[]{});
+
+        int[] affectedRows = winningWinningTransactionDao.deleteTransfer(Collections.emptyList());
 
         Assert.assertNotNull(affectedRows);
         Assert.assertEquals(0, affectedRows.length);
