@@ -46,6 +46,7 @@ class CommonAggregator implements AggregatorStrategy {
                         .transactionNumber("01".equals(trx.getOperationType()) ? -1L : 1L)
                         .updateDate(now)
                         .updateUser(RankingProcessorService.PROCESS_NAME)
+                        .trxTimestamp("01".equals(trx.getOperationType())?null:trx.getTrxDate())
                         .build())
                 .collect(executionStrategy.toMap(CitizenRanking::getFiscalCode, Function.identity(), CASHBACK_MAPPER));
 
