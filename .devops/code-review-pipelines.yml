@@ -1,0 +1,67 @@
+# Build your Java project and run tests with Apache Maven.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/java
+
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+#variables:
+#  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
+#  MAVEN_OPTS: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+
+steps:
+  #  - task: Cache@2
+  #    inputs:
+  #      key: 'maven | "$(Agent.OS)" | pom.xml'
+  #      restoreKeys: |
+  #        maven | "$(Agent.OS)"
+  #        maven
+  #      path: $(MAVEN_CACHE_FOLDER)
+  #    displayName: Cache Maven local repo
+
+  - task: SonarCloudPrepare@1
+    displayName: 'Prepare SonarCloud analysis configuration'
+    inputs:
+      SonarCloud: '$(SONARCLOUD_SERVICE_CONN)'
+      organization: '$(SONARCLOUD_ORG)'
+      scannerMode: Other
+      extraProperties: |
+        sonar.projectKey=$(SONARCLOUD_PROJECT_KEY)
+        sonar.projectName=$(SONARCLOUD_PROJECT_NAME)
+      # sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+      # sonar.junit.reportPaths=target/surefire-reports/
+  - task: Maven@3
+    displayName: Build and Test
+    inputs:
+      mavenPomFile: 'pom.xml'
+      goals: 'package sonar:sonar'
+      options: '-DaltDeploymentRepository=cstar::default::https://pkgs.dev.azure.com/pagopaspa/cstar-projects/_packaging/cstar/maven/v1'
+      publishJUnitResults: true
+      testResultsFiles: '**/surefire-reports/TEST-*.xml'
+      codeCoverageToolOption: 'JaCoCo'
+      codeCoverageClassFilter: '+:eu.sia.meda.**,-:**.*Config,-:**.*Scheduler,-:**.Dummy*,-:**.model.**,-:**.enums.**,-:**.*Constants,-:**.*Application,-:**.*Test,-:**.*Test.**,-:**Base*.**,-:ErrorManagerService.java'
+      javaHomeOption: 'JDKVersion'
+      jdkVersionOption: '1.11'
+      jdkArchitectureOption: 'x64'
+      mavenVersionOption: 'Default'
+      mavenOptions: '-Xmx3072m'
+      mavenAuthenticateFeed: true
+      effectivePomSkip: true
+      sonarQubeRunAnalysis: true
+      isJacocoCoverageReportXML: true
+      sqMavenPluginVersionChoice: 'latest'
+  - task: Bash@3
+    displayName: Bash
+    name: Bash
+    inputs:
+      targetType: 'inline'
+      script: |
+        cd $(System.DefaultWorkingDirectory) | ls -lR
+      failOnStderr: true
+  - task: SonarCloudPublish@1
+    displayName: 'Publish SonarCloud results on build summary'
+    inputs:
+      pollingTimeoutSec: '300'
