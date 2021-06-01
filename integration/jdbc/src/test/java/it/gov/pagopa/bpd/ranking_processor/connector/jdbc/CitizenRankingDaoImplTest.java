@@ -153,7 +153,7 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                     .totalCashback(BigDecimal.ONE)
                     .transactionNumber(1L)
                     .ranking(1L)
-                    .trxTimestamp(OffsetDateTime.now())
+                    .lastTrxTimestamp(OffsetDateTime.now())
                     .build();
 
             ResultSet resultSet = Mockito.mock(ResultSet.class);
@@ -169,7 +169,7 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                 Mockito.when(resultSet.getLong("ranking_n"))
                         .thenReturn(citizenRanking.getRanking());
                 Mockito.when(resultSet.getObject("trx_timestamp_t", OffsetDateTime.class))
-                        .thenReturn(citizenRanking.getTrxTimestamp());
+                        .thenReturn(citizenRanking.getLastTrxTimestamp());
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
                 Assert.fail(throwables.getMessage());
@@ -183,7 +183,7 @@ public class CitizenRankingDaoImplTest extends BaseTest {
             Assert.assertEquals(citizenRanking.getTotalCashback(), result.getTotalCashback());
             Assert.assertEquals(citizenRanking.getTransactionNumber(), result.getTransactionNumber());
             Assert.assertEquals(citizenRanking.getRanking(), result.getRanking());
-            Assert.assertEquals(citizenRanking.getTrxTimestamp(), result.getTrxTimestamp());
+            Assert.assertEquals(citizenRanking.getLastTrxTimestamp(), result.getLastTrxTimestamp());
         }
 
     }

@@ -32,8 +32,8 @@ public class CitizenRanking {
     @Column("update_user_s")
     private String updateUser;
 
-    @Column("trx_timestamp_t")
-    private OffsetDateTime trxTimestamp;
+    @Column("last_trx_timestamp_t")
+    private OffsetDateTime lastTrxTimestamp;
 
     @Transient
     private OffsetDateTime timestampTc;

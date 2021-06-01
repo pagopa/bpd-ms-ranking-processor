@@ -14,13 +14,13 @@ public interface CashbackUpdateStrategy {
     BinaryOperator<CitizenRanking> CASHBACK_MAPPER = (cr1, cr2) -> {
         cr1.setTotalCashback(cr1.getTotalCashback().add(cr2.getTotalCashback()));
         cr1.setTransactionNumber(cr1.getTransactionNumber() + cr2.getTransactionNumber());
-        if(null==cr1.getTrxTimestamp()) {
-            cr1.setTrxTimestamp(cr2.getTrxTimestamp());
+        if(null==cr1.getLastTrxTimestamp()) {
+            cr1.setLastTrxTimestamp(cr2.getLastTrxTimestamp());
         }else{
-            if(null==cr2.getTrxTimestamp()){
-                cr1.setTrxTimestamp(cr1.getTrxTimestamp());
+            if(null==cr2.getLastTrxTimestamp()){
+                cr1.setLastTrxTimestamp(cr1.getLastTrxTimestamp());
             }else{
-                cr1.setTrxTimestamp(cr1.getTrxTimestamp().isAfter(cr2.getTrxTimestamp())?cr1.getTrxTimestamp():cr2.getTrxTimestamp());
+                cr1.setLastTrxTimestamp(cr1.getLastTrxTimestamp().isAfter(cr2.getLastTrxTimestamp())?cr1.getLastTrxTimestamp():cr2.getLastTrxTimestamp());
             }
         }
         return cr1;

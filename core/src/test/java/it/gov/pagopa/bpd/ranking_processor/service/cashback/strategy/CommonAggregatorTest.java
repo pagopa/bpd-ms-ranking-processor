@@ -43,7 +43,7 @@ public abstract class CommonAggregatorTest extends AggregatorTest {
             assertTrue(citizenRanking.getTransactionNumber() < 0);
             assertEquals(fiscalCode2ExpectationMap.get(citizenRanking.getFiscalCode()).getTotalCashback(), citizenRanking.getTotalCashback());
             assertEquals(fiscalCode2ExpectationMap.get(citizenRanking.getFiscalCode()).getTransactionNumber(), citizenRanking.getTransactionNumber());
-            assertNull(citizenRanking.getTrxTimestamp());
+            assertNull(citizenRanking.getLastTrxTimestamp());
         });
     }
 
@@ -113,7 +113,7 @@ public abstract class CommonAggregatorTest extends AggregatorTest {
             assertTrue(citizenRanking.getTransactionNumber() > 0);
             assertEquals(fiscalCode2ExpectationMap.get(citizenRanking.getFiscalCode()).getTotalCashback(), citizenRanking.getTotalCashback());
             assertEquals(fiscalCode2ExpectationMap.get(citizenRanking.getFiscalCode()).getTransactionNumber(), citizenRanking.getTransactionNumber());
-            assertEquals(maxTrxTimestampMap.get(citizenRanking.getFiscalCode()),citizenRanking.getTrxTimestamp());
+            assertEquals(maxTrxTimestampMap.get(citizenRanking.getFiscalCode()),citizenRanking.getLastTrxTimestamp());
         });
     }
 
