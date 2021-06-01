@@ -12,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,9 +29,10 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
     private static boolean correlationId;
     private static boolean matchPayment;
     private static boolean paymentWithSameAmount;
+    private static boolean retention;
 
     public TotalTransferCashbackUpdateImplTest() {
-        this.cashbackUpdateStrategy = new TotalTransferCashbackUpdate(winningTransactionDaoMock, citizenRankingDaoMock, beanFactoryMock, 2);
+        this.cashbackUpdateStrategy = new TotalTransferCashbackUpdate(winningTransactionDaoMock, citizenRankingDaoMock, beanFactoryMock, 2, Period.parse("P1D"));
     }
 
     @Override
@@ -48,6 +51,14 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
         return PageRequest.of(pageRequest.getPage(), pageRequest.getSize(), Sort.by("fiscal_code_s"));
     }
 
+    @Override
+    public void init() {
+        super.init();
+        correlationId = false;
+        matchPayment = false;
+        paymentWithSameAmount = false;
+        retention = false;
+    }
 
     @Override
     protected void initMocks() {
@@ -63,10 +74,14 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
                         } else {
                             ignoredSetters = new String[]{"setOperationType", "setAmount", "setCorrelationId"};
                         }
-                        transactions.add(TestUtils.mockInstance(WinningTransaction.builder()
+                        WinningTransaction trx = TestUtils.mockInstance(WinningTransaction.builder()
                                 .operationType("01")
                                 .amount(BigDecimal.ONE)
-                                .build(), i, ignoredSetters));
+                                .build(), i, ignoredSetters);
+                        if (retention) {
+                            trx.setInsertDate(OffsetDateTime.now().minus(Period.ofMonths(1)));
+                        }
+                        transactions.add(trx);
                     }
                     return transactions;
                 });
@@ -118,6 +133,17 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
                     }
                 });
         when(winningTransactionDaoMock.updateUnprocessedPartialTransfer(any()))
+                .thenAnswer(invocationOnMock -> {
+                    Collection transactions = invocationOnMock.getArgument(0, Collection.class);
+                    if (!paymentWithSameAmount) {
+                        int[] result = new int[transactions.size()];
+                        Arrays.fill(result, 1);
+                        return result;
+                    } else {
+                        return null;
+                    }
+                });
+        when(winningTransactionDaoMock.deleteTransfer(any()))
                 .thenAnswer(invocationOnMock -> {
                     Collection transactions = invocationOnMock.getArgument(0, Collection.class);
                     if (!paymentWithSameAmount) {
@@ -235,6 +261,23 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
                 .updateUnrelatedTransfer(anyCollection());
         BDDMockito.verify(citizenRankingDaoMock, times(1))
                 .updateCashback(anyList());
+        verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
+    }
+
+    @Test
+    public void process_OK_WithRetention() {
+        retention = true;
+
+        SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(1L)
+                .build();
+        int processedTrxCount = getCashbackUpdateService().process(awardPeriod, pageRequest);
+
+        Assert.assertSame(LIMIT, processedTrxCount);
+        verifyTrxToProcess(pageRequest, awardPeriod);
+        BDDMockito.verify(winningTransactionDaoMock, times(1))
+                .deleteTransfer(anyList());
         verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
     }
 

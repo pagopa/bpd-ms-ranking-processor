@@ -31,6 +31,8 @@ public class WinningTransaction implements Serializable {
     private String merchantId;
     private String terminalId;
     private Boolean parked;
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+    private OffsetDateTime insertDate;
 
 
     public enum TransactionType {

@@ -34,4 +34,6 @@ public interface WinningTransactionDao {
     int[] updateUnrelatedTransfer(Collection<WinningTransaction> winningTransactions);
 
     int[] updateUnprocessedPartialTransfer(Collection<WinningTransaction> winningTransactions);
+
+    int[] deleteTransfer(List<WinningTransaction> winningTransactions);
 }
