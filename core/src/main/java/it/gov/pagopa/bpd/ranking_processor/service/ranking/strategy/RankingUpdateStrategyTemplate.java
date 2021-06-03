@@ -26,18 +26,19 @@ import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingD
 abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
     static final String ERROR_MESSAGE_TEMPLATE = "updateRanking: affected %d rows of %d";
-    protected final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing((CitizenRanking c) -> null==c.getLastTrxTimestamp()?OffsetDateTime.MIN:c.getLastTrxTimestamp(), Comparator.naturalOrder())
-                .thenComparing((CitizenRanking c) ->{
-                        if(null==c.getTimestampTc()){
-                            OffsetDateTime tcTimestamp = retrieveTcTimestamp(c.getFiscalCode());
-                            if(null==tcTimestamp){
-                                log.warn(String.format("Citizen timestampTc null for user having fiscalCode = %s", c.getFiscalCode()));
-                                tcTimestamp = OffsetDateTime.MAX;
-                            }
-                            c.setTimestampTc(tcTimestamp);
-                        }
-                        return c.getTimestampTc();
-                }, Comparator.naturalOrder());
+    protected final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing((CitizenRanking c) -> null == c.getLastTrxTimestamp() ? OffsetDateTime.MIN : c.getLastTrxTimestamp(), Comparator.naturalOrder())
+            .thenComparing((CitizenRanking c) -> {
+                if (null == c.getTimestampTc()) {
+                    OffsetDateTime tcTimestamp = retrieveTcTimestamp(c.getFiscalCode());
+                    if (null == tcTimestamp) {
+                        log.warn(String.format("Citizen timestampTc null for user having fiscalCode = %s", c.getFiscalCode()));
+                        tcTimestamp = OffsetDateTime.MAX;
+                    }
+                    c.setTimestampTc(tcTimestamp);
+                }
+                return c.getTimestampTc();
+            }, Comparator.naturalOrder())
+            .thenComparing(CitizenRanking::getFiscalCode);
 
     protected int lastAssignedRanking;
     protected final OffsetDateTime startProcess;
@@ -187,5 +188,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
     }
 
-    protected OffsetDateTime retrieveTcTimestamp(String fiscalCode){return citizenRankingDao.getUserTcTimestamp(fiscalCode);}
+    protected OffsetDateTime retrieveTcTimestamp(String fiscalCode) {
+        return citizenRankingDao.getUserTcTimestamp(fiscalCode);
+    }
 }

@@ -69,7 +69,7 @@ public abstract class RankingUpdateStrategyTemplateTest {
                     for (int i = 0; i < pageable.getPageSize(); i++) {
                         rankings.add(TestUtils.mockInstance(CitizenRanking.builder()
                                 .transactionNumber(1L).lastTrxTimestamp(i<2?start.minusDays(1+i):null).timestampTc(i<4?start.minusDays(i):null).insertUser(""+i)
-                                .build(), i, "setTransactionNumber", "setTrxTimestamp", "setTimestampTc", "setInsertUser"));
+                                .build(), i, "setTransactionNumber", "setLastTrxTimestamp", "setTimestampTc", "setInsertUser"));
                     }
                     return rankings;
                 });
