@@ -3,14 +3,14 @@
     <parent>
         <artifactId>bpd-ms-ranking-processor-integration</artifactId>
         <groupId>it.gov.pagopa.bpd.ms.ranking_processor</groupId>
-        <version>CEN-42-rc3</version>
+        <version>CEN-157-rc4</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>it.gov.pagopa.bpd.ms.ranking_processor.integration</groupId>
     <artifactId>bpd-ms-ranking-processor-integration-jdbc</artifactId>
-    <version>CEN-42-rc3</version>
+    <version>CEN-157-rc4</version>
 
     <dependencies>
         <dependency>
