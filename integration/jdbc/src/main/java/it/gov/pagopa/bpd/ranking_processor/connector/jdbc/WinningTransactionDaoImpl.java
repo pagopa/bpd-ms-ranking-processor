@@ -222,9 +222,9 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
 
 
     @Override
-    public BigDecimal findProcessedTranferAmount(WinningTransaction.FilterCriteria filterCriteria) {
+    public BigDecimal findProcessedTransferAmount(WinningTransaction.FilterCriteria filterCriteria) {
         if (log.isTraceEnabled()) {
-            log.trace("WinningTransactionDaoImpl.findProcessedTranferAmount");
+            log.trace("WinningTransactionDaoImpl.findProcessedTransferAmount");
         }
         if (log.isDebugEnabled()) {
             log.debug("filterCriteria = {}", filterCriteria);
@@ -241,7 +241,7 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
                     filterCriteria.getCorrelationId());
 
         } catch (EmptyResultDataAccessException e) {
-            result = BigDecimal.ZERO;
+            result = null;
         }
 
         return result;

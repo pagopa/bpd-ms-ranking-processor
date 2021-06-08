@@ -111,7 +111,7 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
                         return null;
                     }
                 });
-        when(winningTransactionDaoMock.findProcessedTranferAmount(any()))
+        when(winningTransactionDaoMock.findProcessedTransferAmount(any()))
                 .thenReturn(BigDecimal.ONE);
         when(winningTransactionDaoMock.updateUnrelatedTransfer(any()))
                 .thenAnswer(invocationOnMock -> {
@@ -193,7 +193,7 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
         BDDMockito.verify(winningTransactionDaoMock, times(LIMIT))
                 .findPaymentTrxWithCorrelationId(any());
         BDDMockito.verify(winningTransactionDaoMock, times(LIMIT))
-                .findProcessedTranferAmount(any());
+                .findProcessedTransferAmount(any());
         BDDMockito.verify(winningTransactionDaoMock, times(1))
                 .updateProcessedTransaction(anyCollection());
         BDDMockito.verify(winningTransactionDaoMock, times(1))
@@ -283,7 +283,7 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
         BDDMockito.verify(winningTransactionDaoMock, times(LIMIT))
                 .findPaymentTrxWithCorrelationId(any());
         BDDMockito.verify(winningTransactionDaoMock, times(LIMIT))
-                .findProcessedTranferAmount(any());
+                .findProcessedTransferAmount(any());
         if (!cashbackError) {
             BDDMockito.verify(winningTransactionDaoMock, times(1))
                     .deleteTransfer(anyList());

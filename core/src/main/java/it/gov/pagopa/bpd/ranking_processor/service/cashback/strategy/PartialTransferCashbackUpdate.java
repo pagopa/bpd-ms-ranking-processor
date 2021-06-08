@@ -12,11 +12,13 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Scope;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -31,7 +33,8 @@ import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransact
  * Implementation of {@link CashbackUpdateStrategyTemplate} to handle partial transfer
  */
 @Slf4j
-@Service
+@Component
+@Scope(BeanDefinition.SCOPE_PROTOTYPE)
 @Conditional(CashbackUpdatePartialTransferEnabledCondition.class)
 class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
 
@@ -88,7 +91,6 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
 
         List<WinningTransaction> unrelatedTransfer = new ArrayList<>();
         List<WinningTransaction> relatedPartialTransfer = new ArrayList<>();
-        List<WinningTransaction> relatedTotalTransfer = new ArrayList<>();
         List<WinningTransaction> oldTransfer = new ArrayList<>();
 
         OffsetDateTime max = OffsetDateTime.now().minus(maxDepth);
@@ -137,8 +139,11 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
                         filterCriteria.setAcquirerCode(transferTrx.getAcquirerCode());
                         filterCriteria.setAcquirerId(transferTrx.getAcquirerId());
                         filterCriteria.setCorrelationId(transferTrx.getCorrelationId());
-                        BigDecimal processedTranferAmount = winningTransactionDao.findProcessedTranferAmount(filterCriteria);
-                        transferTrx.setAmountBalance(paymentTrx.getAmount().subtract(processedTranferAmount));
+                        BigDecimal processedTranferAmount = winningTransactionDao.findProcessedTransferAmount(filterCriteria);
+                        BigDecimal amountBalance = paymentTrx.getAmount().subtract(processedTranferAmount == null
+                                ? BigDecimal.ZERO
+                                : processedTranferAmount);
+                        transferTrx.setAmountBalance(amountBalance);
                     }
                 }
             }

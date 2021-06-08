@@ -104,7 +104,7 @@ public class WinningTransactionDaoImplTest extends BaseTest {
                 .thenReturn(BigDecimal.TEN);
 
         WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
-        BigDecimal processedTranferAmount = winningWinningTransactionDao.findProcessedTranferAmount(filterCriteria);
+        BigDecimal processedTranferAmount = winningWinningTransactionDao.findProcessedTransferAmount(filterCriteria);
 
         Assert.assertNotNull(processedTranferAmount);
         Assert.assertEquals(BigDecimal.TEN, processedTranferAmount);
@@ -117,10 +117,9 @@ public class WinningTransactionDaoImplTest extends BaseTest {
                 .when(jdbcTemplateMock).queryForObject(anyString(), eq(BigDecimal.class), any());
 
         WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
-        BigDecimal processedTranferAmount = winningWinningTransactionDao.findProcessedTranferAmount(filterCriteria);
+        BigDecimal processedTranferAmount = winningWinningTransactionDao.findProcessedTransferAmount(filterCriteria);
 
-        Assert.assertNotNull(processedTranferAmount);
-        Assert.assertEquals(BigDecimal.ZERO, processedTranferAmount);
+        Assert.assertNull(processedTranferAmount);
     }
 
 

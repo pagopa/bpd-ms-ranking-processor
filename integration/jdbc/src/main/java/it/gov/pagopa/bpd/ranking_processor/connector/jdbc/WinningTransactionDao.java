@@ -34,7 +34,7 @@ public interface WinningTransactionDao {
 
     int[] updateUnprocessedPartialTransfer(Collection<WinningTransaction> winningTransactions);
 
-    BigDecimal findProcessedTranferAmount(WinningTransaction.FilterCriteria filterCriteria);
+    BigDecimal findProcessedTransferAmount(WinningTransaction.FilterCriteria filterCriteria);
 
     int[] deleteTransfer(List<WinningTransaction> winningTransactions);
 }
