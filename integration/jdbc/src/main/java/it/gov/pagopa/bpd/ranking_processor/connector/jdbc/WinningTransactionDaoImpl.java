@@ -16,6 +16,7 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -27,14 +28,12 @@ import java.util.List;
 @Slf4j
 class WinningTransactionDaoImpl implements WinningTransactionDao {
 
-    public static final String FIND_PAYMENT_TRX_WITH_CORRELATION_ID_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = ? and payment.acquirer_c = ? and payment.acquirer_id_s = ? and payment.correlation_id_s = ?";
-    public static final String FIND_PAYMENT_TRX_WITHOUT_CORRELATION_ID_QUERY_TEMPLATE = "select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = ? and payment.acquirer_c = ? and payment.acquirer_id_s = ? and payment.amount_i = ? and payment.merchant_id_s = ? and payment.terminal_id_s = ?";
-
     private final String findPaymentTrxToProcessQuery;
     private final String findPartialTransferTrxToProcessQuery;
     private final String findTransferTrxToProcessQuery;
     private final String findPaymentTrxWithCorrelationIdQuery;
     private final String findPaymentTrxWithoutCorrelationIdQuery;
+    private final String findProcessedTransferAmountQuery;
     private final String updateProcessedTrxSql;
     private final String updateUnrelatedTransferSql;
     private final String updateUnprocessedPartialTransferSql;
@@ -43,7 +42,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     private final RowMapper<WinningTransaction> paymentTrxRowMapper = new WinningTransactionMapper();
     private final RowMapperResultSetExtractor<WinningTransaction> paymentTrxResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionMapper());
     private final RowMapperResultSetExtractor<WinningTransaction> transferTrxResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionTotalTransferMapper());
-    private final RowMapperResultSetExtractor<WinningTransaction> partialTransferTrxResultSetExtractor = new RowMapperResultSetExtractor<>(new WinningTransactionPartialTransferMapper());
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final boolean lockEnabled;
 
@@ -53,7 +51,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
     public WinningTransactionDaoImpl(@Qualifier("winningTransactionJdbcTemplate") JdbcTemplate jdbcTemplate,
                                      @Value("${winning-transaction.extraction-query.lock.enable}") boolean lockEnabled,
                                      @Value("${winning-transaction.extraction-query.elab-ranking.name}") String elabRankingName,
-                                     @Value("${winning-transaction.extraction-query.transfer.max-depth}") String transferMaxDepth,
                                      @Value("${winning-transaction.extraction-query.transfer.table.name}") String transferTableName) {
         if (log.isTraceEnabled()) {
             log.trace("WinningTransactionDaoImpl.WinningTransactionDaoImpl");
@@ -76,16 +73,15 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
                 transferTableName);
         deleteTrxTransferSql = String.format("delete from %s where id_trx_acquirer_s = :idTrxAcquirer and acquirer_c = :acquirerCode and trx_timestamp_t = :trxDate and operation_type_c = :operationType and acquirer_id_s = :acquirerId",
                 transferTableName);
-        findPartialTransferTrxToProcessQuery = String.format("select payment.amount_i - coalesce(sum(partial_transfer_elabled.amount_i), 0) as amount_balance, partial_transfer_to_elab.id_trx_acquirer_s, partial_transfer_to_elab.trx_timestamp_t, partial_transfer_to_elab.acquirer_c, partial_transfer_to_elab.acquirer_id_s, partial_transfer_to_elab.operation_type_c, partial_transfer_to_elab.score_n, partial_transfer_to_elab.amount_i, partial_transfer_to_elab.fiscal_code_s, partial_transfer_to_elab.correlation_id_s from bpd_winning_transaction.bpd_winning_transaction_transfer partial_transfer_to_elab inner join bpd_winning_transaction.bpd_winning_transaction payment on payment.enabled_b is true and payment.%s is true and payment.operation_type_c != partial_transfer_to_elab.operation_type_c and payment.award_period_id_n = partial_transfer_to_elab.award_period_id_n and payment.hpan_s = partial_transfer_to_elab.hpan_s and payment.acquirer_c = partial_transfer_to_elab.acquirer_c and payment.acquirer_id_s = partial_transfer_to_elab.acquirer_id_s and payment.amount_i != partial_transfer_to_elab.amount_i and payment.correlation_id_s = partial_transfer_to_elab.correlation_id_s left outer join bpd_winning_transaction.bpd_winning_transaction partial_transfer_elabled on partial_transfer_elabled.enabled_b is true and partial_transfer_elabled.%s is true and partial_transfer_elabled.operation_type_c = partial_transfer_to_elab.operation_type_c and partial_transfer_elabled.award_period_id_n = partial_transfer_to_elab.award_period_id_n and partial_transfer_elabled.hpan_s = partial_transfer_to_elab.hpan_s and partial_transfer_elabled.acquirer_c = partial_transfer_to_elab.acquirer_c and partial_transfer_elabled.acquirer_id_s = partial_transfer_to_elab.acquirer_id_s and partial_transfer_elabled.correlation_id_s = partial_transfer_to_elab.correlation_id_s where partial_transfer_to_elab.enabled_b is true and partial_transfer_to_elab.%s is not true and partial_transfer_to_elab.award_period_id_n = ? and partial_transfer_to_elab.operation_type_c = '01' and nullif(partial_transfer_to_elab.correlation_id_s, '') is not null and partial_transfer_to_elab.insert_date_t > current_timestamp - interval '%s' group by partial_transfer_to_elab.id_trx_acquirer_s, partial_transfer_to_elab.trx_timestamp_t, partial_transfer_to_elab.acquirer_c, partial_transfer_to_elab.acquirer_id_s, partial_transfer_to_elab.operation_type_c, partial_transfer_to_elab.amount_i, partial_transfer_to_elab.fiscal_code_s, payment.amount_i order by partial_transfer_to_elab.trx_timestamp_t",
-                elabRankingName,
-                elabRankingName,
-                elabRankingName,
-                transferMaxDepth);
+        findPartialTransferTrxToProcessQuery = String.format("select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s, correlation_id_s, hpan_s, merchant_id_s, terminal_id_s, insert_date_t from %s transfer where transfer.award_period_id_n = ? and coalesce(transfer.update_date_t, '1900-01-01 00:00:00.000'::timestamptz) < ? and transfer.parked_b is not true",
+                transferTableName);
         findTransferTrxToProcessQuery = String.format("select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s, correlation_id_s, hpan_s, merchant_id_s, terminal_id_s, insert_date_t from %s transfer where transfer.award_period_id_n = ? and coalesce(transfer.update_date_t, '1900-01-01 00:00:00.000'::timestamptz) < ? and transfer.partial_transfer_b is not true and transfer.parked_b is not true",
                 transferTableName);
-        findPaymentTrxWithCorrelationIdQuery = String.format(FIND_PAYMENT_TRX_WITH_CORRELATION_ID_QUERY_TEMPLATE,
+        findPaymentTrxWithCorrelationIdQuery = String.format("select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = ? and payment.acquirer_c = ? and payment.acquirer_id_s = ? and payment.correlation_id_s = ?",
                 elabRankingName);
-        findPaymentTrxWithoutCorrelationIdQuery = String.format(FIND_PAYMENT_TRX_WITHOUT_CORRELATION_ID_QUERY_TEMPLATE,
+        findPaymentTrxWithoutCorrelationIdQuery = String.format("select id_trx_acquirer_s, trx_timestamp_t, acquirer_c, acquirer_id_s, operation_type_c, score_n, amount_i, fiscal_code_s from bpd_winning_transaction payment where payment.enabled_b is true and payment.%s is true and payment.operation_type_c != '01' and payment.award_period_id_n = ? and payment.hpan_s = ? and payment.acquirer_c = ? and payment.acquirer_id_s = ? and payment.amount_i = ? and payment.merchant_id_s = ? and payment.terminal_id_s = ?",
+                elabRankingName);
+        findProcessedTransferAmountQuery = String.format("select sum(amount_i) from bpd_winning_transaction where enabled_b is true and %s is true and operation_type_c = '01' and award_period_id_n = ? and hpan_s = ? and acquirer_c = ? and acquirer_id_s = ? and correlation_id_s = ?",
                 elabRankingName);
     }
 
@@ -204,20 +200,51 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
 
 
     @Override
-    public List<WinningTransaction> findPartialTranferToProcess(Long awardPeriodId, Pageable pageable) {
+    public List<WinningTransaction> findPartialTransferToProcess(WinningTransaction.FilterCriteria filterCriteria, Pageable pageable) {
         if (log.isTraceEnabled()) {
-            log.trace("WinningTransactionDaoImpl.findPartialTranferToProcess");
+            log.trace("WinningTransactionDaoImpl.findPartialTransferToProcess");
         }
         if (log.isDebugEnabled()) {
-            log.debug("awardPeriodId = {}, pageable = {}", awardPeriodId, pageable);
+            log.debug("filterCriteria = {}, pageable = {}", filterCriteria, pageable);
         }
 
         StringBuilder sql = new StringBuilder(findPartialTransferTrxToProcessQuery);
         managePagination(sql, pageable);
+        manageLocking(sql);
 
         return jdbcTemplate.query(connection -> connection.prepareStatement(sql.toString()),
-                preparedStatement -> preparedStatement.setLong(1, awardPeriodId),
-                partialTransferTrxResultSetExtractor);
+                preparedStatement -> {
+                    preparedStatement.setLong(1, filterCriteria.getAwardPeriodId());
+                    preparedStatement.setTimestamp(2, new Timestamp(filterCriteria.getUpdateDate().toInstant().toEpochMilli()));
+                },
+                transferTrxResultSetExtractor);
+    }
+
+
+    @Override
+    public BigDecimal findProcessedTranferAmount(WinningTransaction.FilterCriteria filterCriteria) {
+        if (log.isTraceEnabled()) {
+            log.trace("WinningTransactionDaoImpl.findProcessedTranferAmount");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("filterCriteria = {}", filterCriteria);
+        }
+
+        BigDecimal result;
+        try {
+            result = jdbcTemplate.queryForObject(findProcessedTransferAmountQuery,
+                    BigDecimal.class,
+                    filterCriteria.getAwardPeriodId(),
+                    filterCriteria.getHpan(),
+                    filterCriteria.getAcquirerCode(),
+                    filterCriteria.getAcquirerId(),
+                    filterCriteria.getCorrelationId());
+
+        } catch (EmptyResultDataAccessException e) {
+            result = BigDecimal.ZERO;
+        }
+
+        return result;
     }
 
 
@@ -306,18 +333,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
             winningTransaction.setMerchantId(rs.getString("merchant_id_s"));
             winningTransaction.setTerminalId(rs.getString("terminal_id_s"));
             winningTransaction.setInsertDate(rs.getObject("insert_date_t", OffsetDateTime.class));
-            return winningTransaction;
-        }
-    }
-
-    @Slf4j
-    static class WinningTransactionPartialTransferMapper extends WinningTransactionMapper {
-
-        @Override
-        public WinningTransaction mapRow(ResultSet rs, int rowNum) throws SQLException {
-            WinningTransaction winningTransaction = super.mapRow(rs, rowNum);
-            winningTransaction.setCorrelationId(rs.getString("correlation_id_s"));
-            winningTransaction.setAmountBalance(rs.getBigDecimal("amount_balance"));
             return winningTransaction;
         }
     }
