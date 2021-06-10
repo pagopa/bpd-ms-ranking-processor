@@ -4,12 +4,12 @@
     <parent>
         <artifactId>bpd-ms-ranking-processor-api</artifactId>
         <groupId>it.gov.pagopa.bpd.ms.ranking_processor</groupId>
-        <version>CEN-157-rc4</version>
+        <version>CEN-42-rc5</version>
     </parent>
 
     <groupId>it.gov.pagopa.bpd.ms.ranking_processor.api</groupId>
     <artifactId>bpd-ms-ranking-processor-api-rest</artifactId>
-    <version>CEN-157-rc4</version>
+    <version>CEN-42-rc5</version>
 
     <dependencies>
         <dependency>
