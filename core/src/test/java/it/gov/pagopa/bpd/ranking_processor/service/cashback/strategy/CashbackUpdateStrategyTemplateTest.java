@@ -84,7 +84,7 @@ public abstract class CashbackUpdateStrategyTemplateTest {
                     }
                     return transactions;
                 });
-        when(winningTransactionDaoMock.findPartialTranferToProcess(anyLong(), any(Pageable.class)))
+        when(winningTransactionDaoMock.findPartialTransferToProcess(any(), any(Pageable.class)))
                 .thenAnswer(invocationOnMock -> {
                     Pageable pageable = invocationOnMock.getArgument(1, Pageable.class);
                     List<WinningTransaction> transactions = new ArrayList<>(pageable.getPageSize());

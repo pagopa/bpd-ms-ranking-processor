@@ -30,6 +30,7 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
     private static boolean matchPayment;
     private static boolean paymentWithSameAmount;
     private static boolean retention;
+    private static boolean cashbackError;
 
     public TotalTransferCashbackUpdateImplTest() {
         this.cashbackUpdateStrategy = new TotalTransferCashbackUpdate(winningTransactionDaoMock, citizenRankingDaoMock, beanFactoryMock, 2, Period.parse("P1D"));
@@ -58,6 +59,7 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
         matchPayment = false;
         paymentWithSameAmount = false;
         retention = false;
+        cashbackError = false;
     }
 
     @Override
@@ -146,13 +148,9 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
         when(winningTransactionDaoMock.deleteTransfer(any()))
                 .thenAnswer(invocationOnMock -> {
                     Collection transactions = invocationOnMock.getArgument(0, Collection.class);
-                    if (!paymentWithSameAmount) {
-                        int[] result = new int[transactions.size()];
-                        Arrays.fill(result, 1);
-                        return result;
-                    } else {
-                        return null;
-                    }
+                    int[] result = new int[transactions.size()];
+                    Arrays.fill(result, 1);
+                    return result;
                 });
     }
 
@@ -179,8 +177,6 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
                 .findPaymentTrxWithCorrelationId(any());
         BDDMockito.verify(winningTransactionDaoMock, times(1))
                 .updateUnrelatedTransfer(anyCollection());
-        BDDMockito.verify(citizenRankingDaoMock, never())
-                .updateCashback(anyList());
         verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
     }
 
@@ -201,12 +197,6 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
                 .findPaymentTrxWithoutCorrelationId(any());
         BDDMockito.verify(winningTransactionDaoMock, times(1))
                 .updateUnrelatedTransfer(anyCollection());
-        BDDMockito.verify(winningTransactionDaoMock, never())
-                .updateUnprocessedPartialTransfer(anyCollection());
-        BDDMockito.verify(winningTransactionDaoMock, never())
-                .updateProcessedTransaction(anyCollection());
-        BDDMockito.verify(citizenRankingDaoMock, never())
-                .updateCashback(anyList());
         verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
     }
 
@@ -228,12 +218,6 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
                 .findPaymentTrxWithCorrelationId(any());
         BDDMockito.verify(winningTransactionDaoMock, times(1))
                 .updateUnprocessedPartialTransfer(anyCollection());
-        BDDMockito.verify(winningTransactionDaoMock, never())
-                .updateUnrelatedTransfer(anyCollection());
-        BDDMockito.verify(winningTransactionDaoMock, never())
-                .updateProcessedTransaction(anyCollection());
-        BDDMockito.verify(citizenRankingDaoMock, never())
-                .updateCashback(anyList());
         verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
     }
 
@@ -255,10 +239,8 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
                 .findPaymentTrxWithoutCorrelationId(any());
         BDDMockito.verify(winningTransactionDaoMock, times(1))
                 .updateProcessedTransaction(anyCollection());
-        BDDMockito.verify(winningTransactionDaoMock, never())
-                .updateUnprocessedPartialTransfer(anyCollection());
-        BDDMockito.verify(winningTransactionDaoMock, never())
-                .updateUnrelatedTransfer(anyCollection());
+        BDDMockito.verify(winningTransactionDaoMock, times(1))
+                .deleteTransfer(anyList());
         BDDMockito.verify(citizenRankingDaoMock, times(1))
                 .updateCashback(anyList());
         verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
@@ -295,6 +277,7 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
         correlationId = false;
         matchPayment = true;
         paymentWithSameAmount = true;
+        cashbackError = true;
 
         super.process_KO_updateCashbackError();
     }
@@ -304,6 +287,7 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
         correlationId = false;
         matchPayment = true;
         paymentWithSameAmount = true;
+        cashbackError = true;
 
         super.process_KO_insertCashbackError();
     }
@@ -313,6 +297,7 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
         correlationId = false;
         matchPayment = true;
         paymentWithSameAmount = true;
+        cashbackError = true;
 
         super.process_KO_insertCashbackMiss();
     }
@@ -339,5 +324,9 @@ public class TotalTransferCashbackUpdateImplTest extends CashbackUpdateStrategyT
     protected void verifyExtraConditions() {
         BDDMockito.verify(winningTransactionDaoMock, times(LIMIT))
                 .findPaymentTrxWithoutCorrelationId(any());
+        if (!cashbackError) {
+            BDDMockito.verify(winningTransactionDaoMock, times(1))
+                    .deleteTransfer(anyList());
+        }
     }
 }

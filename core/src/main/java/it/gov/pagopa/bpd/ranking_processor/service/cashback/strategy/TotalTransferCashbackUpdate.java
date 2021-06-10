@@ -147,7 +147,10 @@ class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
         updateCashback(rankings);
 
         if (!relatedTotalTransfer.isEmpty()) {
-            int[] affectedRows = winningTransactionDao.updateProcessedTransaction(relatedTotalTransfer);
+            int[] affectedRows = winningTransactionDao.deleteTransfer(relatedTotalTransfer);
+            checkErrors(relatedTotalTransfer.size(), affectedRows, "deleteTransfer");
+
+            affectedRows = winningTransactionDao.updateProcessedTransaction(relatedTotalTransfer);
             checkErrors(relatedTotalTransfer.size(), affectedRows, "updateProcessedTransaction");
         }
 
