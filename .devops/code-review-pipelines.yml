@@ -31,37 +31,31 @@ steps:
       extraProperties: |
         sonar.projectKey=$(SONARCLOUD_PROJECT_KEY)
         sonar.projectName=$(SONARCLOUD_PROJECT_NAME)
-      # sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-      # sonar.junit.reportPaths=target/surefire-reports/
+        sonar.exclusions='**/enums/**, **/model/**, **/*Constant*, **/*Config.java, **/*Scheduler.java, **/*Application.java, **/src/test/**, **/Dummy*.java'
+  #        sonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+  #        sonar.junit.reportPaths=target/surefire-reports/
   - task: Maven@3
-    displayName: Build and Test
     inputs:
       mavenPomFile: 'pom.xml'
-      goals: 'package sonar:sonar'
-      options: '-DaltDeploymentRepository=cstar::default::https://pkgs.dev.azure.com/pagopaspa/cstar-projects/_packaging/cstar/maven/v1'
+      goals: 'clean org.jacoco:jacoco-maven-plugin:prepare-agent verify org.jacoco:jacoco-maven-plugin:report '
+      options: '-Dmaven.test.failure.ignore=true'
       publishJUnitResults: true
       testResultsFiles: '**/surefire-reports/TEST-*.xml'
-      codeCoverageToolOption: 'JaCoCo'
-      codeCoverageClassFilter: '+:eu.sia.meda.**,-:**.*Config,-:**.*Scheduler,-:**.Dummy*,-:**.model.**,-:**.enums.**,-:**.*Constants,-:**.*Application,-:**.*Test,-:**.*Test.**,-:**Base*.**,-:ErrorManagerService.java'
       javaHomeOption: 'JDKVersion'
-      jdkVersionOption: '1.11'
-      jdkArchitectureOption: 'x64'
       mavenVersionOption: 'Default'
-      mavenOptions: '-Xmx3072m'
-      mavenAuthenticateFeed: true
-      effectivePomSkip: true
+      mavenAuthenticateFeed: false
+      effectivePomSkip: false
       sonarQubeRunAnalysis: true
       isJacocoCoverageReportXML: true
       sqMavenPluginVersionChoice: 'latest'
-  - task: Bash@3
-    displayName: Bash
-    name: Bash
-    inputs:
-      targetType: 'inline'
-      script: |
-        cd $(System.DefaultWorkingDirectory) | ls -lR
-      failOnStderr: true
+  #  - task: Bash@3
+  #    displayName: Bash
+  #    name: Bash
+  #    inputs:
+  #      targetType: 'inline'
+  #      script: |
+  #        cd $(System.DefaultWorkingDirectory) | ls -lR
+  #      failOnStderr: true
   - task: SonarCloudPublish@1
-    displayName: 'Publish SonarCloud results on build summary'
     inputs:
       pollingTimeoutSec: '300'
