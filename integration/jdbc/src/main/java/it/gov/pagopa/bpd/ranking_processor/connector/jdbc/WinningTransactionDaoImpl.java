@@ -69,7 +69,7 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
                 elabRankingName);
         updateUnrelatedTransferSql = String.format("update %s set update_date_t = :updateDate, update_user_s = :updateUser, parked_b = :parked where id_trx_acquirer_s = :idTrxAcquirer and acquirer_c = :acquirerCode and trx_timestamp_t = :trxDate and operation_type_c = :operationType and acquirer_id_s = :acquirerId",
                 transferTableName);
-        updateUnprocessedPartialTransferSql = String.format("update %s set partial_transfer_b = true, update_date_t = :updateDate, update_user_s = :updateUser where id_trx_acquirer_s = :idTrxAcquirer and acquirer_c = :acquirerCode and trx_timestamp_t = :trxDate and operation_type_c = :operationType and acquirer_id_s = :acquirerId",
+        updateUnprocessedPartialTransferSql = String.format("update %s set partial_transfer_b = true, update_date_t = :updateDate, update_user_s = :updateUser, parked_b = :parked where id_trx_acquirer_s = :idTrxAcquirer and acquirer_c = :acquirerCode and trx_timestamp_t = :trxDate and operation_type_c = :operationType and acquirer_id_s = :acquirerId",
                 transferTableName);
         deleteTrxTransferSql = String.format("delete from %s where id_trx_acquirer_s = :idTrxAcquirer and acquirer_c = :acquirerCode and trx_timestamp_t = :trxDate and operation_type_c = :operationType and acquirer_id_s = :acquirerId",
                 transferTableName);
@@ -272,7 +272,6 @@ class WinningTransactionDaoImpl implements WinningTransactionDao {
         }
 
         SqlParameterSource[] batchValues = SqlParameterSourceUtils.createBatch(winningTransactionIds);
-        namedParameterJdbcTemplate.batchUpdate(deleteTrxTransferSql, batchValues);
         return namedParameterJdbcTemplate.batchUpdate(updateProcessedTrxSql, batchValues);
     }
 

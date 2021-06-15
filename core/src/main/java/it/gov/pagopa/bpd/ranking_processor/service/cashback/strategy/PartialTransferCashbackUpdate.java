@@ -92,6 +92,7 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
         List<WinningTransaction> unrelatedTransfer = new ArrayList<>();
         List<WinningTransaction> relatedPartialTransfer = new ArrayList<>();
         List<WinningTransaction> oldTransfer = new ArrayList<>();
+        List<WinningTransaction> unprocessedPartialTransfer = new ArrayList<>();
 
         OffsetDateTime max = OffsetDateTime.now().minus(maxDepth);
 
@@ -131,6 +132,10 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
                         //total transfer managed as unrelated transfer
                         unrelatedTransfer.add(transferTrx);
 
+                    } else if (transferTrx.getAmount().compareTo(paymentTrx.getAmount()) > 0) {
+                        transferTrx.setParked(true);
+                        unprocessedPartialTransfer.add(transferTrx);
+
                     } else {
                         relatedPartialTransfer.add(transferTrx);
                         WinningTransaction.FilterCriteria filterCriteria = new WinningTransaction.FilterCriteria();
@@ -168,6 +173,11 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
         if (!oldTransfer.isEmpty()) {
             int[] affectedRows = winningTransactionDao.deleteTransfer(oldTransfer);
             checkErrors(oldTransfer.size(), affectedRows, "deleteTransfer");
+        }
+
+        if (!unprocessedPartialTransfer.isEmpty()) {
+            int[] affectedRows = winningTransactionDao.updateUnprocessedPartialTransfer(unprocessedPartialTransfer);
+            checkErrors(unprocessedPartialTransfer.size(), affectedRows, "updateUnprocessedPartialTransfer");
         }
 
         return transactions.size();
