@@ -18,10 +18,10 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
+import java.util.EnumMap;
 
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingDao.RankingProcess.*;
-import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType.PARTIAL_TRANSFER;
-import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType.TOTAL_TRANSFER;
+import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransaction.TransactionType.*;
 
 /**
  * {@link RankingSubProcessCommand} implementation for Update Cashback subprocess
@@ -35,6 +35,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
     private final int cashbackUpdateRetry;
     private final CitizenRankingDao citizenRankingDao;
     private final boolean totalTransferSingleProcessEnabled;
+    private final EnumMap<TransactionType, RankingProcess> trxType2RankingProcessMap;
 
 
     @Autowired
@@ -51,6 +52,11 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
         if (cashbackUpdateRetry != null && cashbackUpdateRetry < 0) {
             throw new IllegalArgumentException("retry limit must be a positive integer");
         }
+
+        trxType2RankingProcessMap = new EnumMap<>(TransactionType.class);
+        trxType2RankingProcessMap.put(PAYMENT, UPDATE_CASHBACK_PAYMENT);
+        trxType2RankingProcessMap.put(TOTAL_TRANSFER, UPDATE_CASHBACK_TOTAL_TRANSFER);
+        trxType2RankingProcessMap.put(PARTIAL_TRANSFER, UPDATE_CASHBACK_PARTIAL_TRANSFER);
 
         this.cashbackUpdateStrategyFactory = cashbackUpdateStrategyFactory;
         this.citizenRankingDao = citizenRankingDao;
@@ -79,21 +85,31 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
 
             } else {
 
-                if (TOTAL_TRANSFER.equals(trxType)
-                        && totalTransferSingleProcessEnabled
-                        && citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0) {
-                    log.info("skip {}", UPDATE_CASHBACK_TOTAL_TRANSFER);
-                    continue;
+                if (TOTAL_TRANSFER.equals(trxType) && totalTransferSingleProcessEnabled) {
+                    if (citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0
+                            || citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_TOTAL_TRANSFER) > 0) {
+                        log.info("skip {}", trxType2RankingProcessMap.get(trxType));
+                        continue;
+                    }
                 }
 
-                if (PARTIAL_TRANSFER.equals(trxType)
-                        && (citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0
-                        || citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_TOTAL_TRANSFER) > 0)) {
-                    log.info("skip {}", UPDATE_CASHBACK_PARTIAL_TRANSFER);
-                    continue;
+                if (PARTIAL_TRANSFER.equals(trxType)) {
+                    if (citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PAYMENT) > 0
+                            || citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_TOTAL_TRANSFER) > 0
+                            || citizenRankingDao.getWorkerCount(UPDATE_CASHBACK_PARTIAL_TRANSFER) > 0) {
+                        log.info("skip {}", trxType2RankingProcessMap.get(trxType));
+                        continue;
+                    }
                 }
 
-                registerWorker(getUpdateRankingSubProcess(trxType), PARTIAL_TRANSFER.equals(trxType));
+                boolean exclusiveLock = PARTIAL_TRANSFER.equals(trxType)
+                        || (TOTAL_TRANSFER.equals(trxType) && totalTransferSingleProcessEnabled);
+                try {
+                    registerWorker(getUpdateRankingSubProcess(trxType), exclusiveLock);
+                } catch (CashbackUpdateExclusiveLockException e) {
+                    log.info("skip {}", trxType2RankingProcessMap.get(trxType));
+                    continue;
+                }
 
                 try {
                     exec(awardPeriod, cashbackUpdateStrategy, stopTime);
@@ -114,7 +130,7 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
 
 
     private RankingProcess getUpdateRankingSubProcess(TransactionType trxType) {
-        return valueOf(UPDATE_CASHBACK.name() + "_" + trxType.name());
+        return RankingProcess.valueOf(UPDATE_CASHBACK.name() + "_" + trxType.name());
     }
 
 
@@ -149,7 +165,13 @@ class UpdateCashbackCommand implements RankingSubProcessCommand {
 
     private void registerWorker(RankingProcess process, boolean exclusiveLock) {
         int affectedRow = citizenRankingDao.registerWorker(process, exclusiveLock);
-        checkError(affectedRow, "register", process);
+        if (exclusiveLock) {
+            if (affectedRow == 0) {
+                throw new CashbackUpdateExclusiveLockException();
+            }
+        } else {
+            checkError(affectedRow, "register", process);
+        }
     }
 
 

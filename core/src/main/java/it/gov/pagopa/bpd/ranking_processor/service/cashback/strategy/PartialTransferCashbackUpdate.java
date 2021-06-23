@@ -8,6 +8,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransacti
 import it.gov.pagopa.bpd.ranking_processor.model.SimplePageRequest;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransactionDao.FIND_TRX_TO_PROCESS_PAGEABLE_SORT;
@@ -92,6 +94,7 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
         List<WinningTransaction> unrelatedTransfer = new ArrayList<>();
         List<WinningTransaction> relatedPartialTransfer = new ArrayList<>();
         List<WinningTransaction> oldTransfer = new ArrayList<>();
+        List<WinningTransaction> unprocessedPartialTransfer = new ArrayList<>();
 
         OffsetDateTime max = OffsetDateTime.now().minus(maxDepth);
 
@@ -114,9 +117,9 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
                     try {
                         paymentTrx = winningTransactionDao.findPaymentTrxWithCorrelationId(filterCriteria);
                     } catch (IncorrectResultSizeDataAccessException e) {
-                        log.warn(String.format("Failed to match transfer with correlation_id '%s': %s",
+                        log.warn("Failed to match transfer with correlation_id '{}': {}",
                                 transferTrx.getCorrelationId(),
-                                e.getMessage()));
+                                e.getMessage());
                         transferTrx.setParked(true);
                         paymentTrx = null;
                     }
@@ -131,6 +134,10 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
                         //total transfer managed as unrelated transfer
                         unrelatedTransfer.add(transferTrx);
 
+                    } else if (transferTrx.getAmount().compareTo(paymentTrx.getAmount()) > 0) {
+                        transferTrx.setParked(true);
+                        unprocessedPartialTransfer.add(transferTrx);
+
                     } else {
                         relatedPartialTransfer.add(transferTrx);
                         WinningTransaction.FilterCriteria filterCriteria = new WinningTransaction.FilterCriteria();
@@ -139,10 +146,10 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
                         filterCriteria.setAcquirerCode(transferTrx.getAcquirerCode());
                         filterCriteria.setAcquirerId(transferTrx.getAcquirerId());
                         filterCriteria.setCorrelationId(transferTrx.getCorrelationId());
-                        BigDecimal processedTranferAmount = winningTransactionDao.findProcessedTransferAmount(filterCriteria);
-                        BigDecimal amountBalance = paymentTrx.getAmount().subtract(processedTranferAmount == null
+                        BigDecimal processedTransferAmount = winningTransactionDao.findProcessedTransferAmount(filterCriteria);
+                        BigDecimal amountBalance = paymentTrx.getAmount().subtract(processedTransferAmount == null
                                 ? BigDecimal.ZERO
-                                : processedTranferAmount);
+                                : processedTransferAmount);
                         transferTrx.setAmountBalance(amountBalance);
                     }
                 }
@@ -151,6 +158,15 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
 
         List<CitizenRanking> rankings = aggregate(awardPeriod, relatedPartialTransfer);
         updateCashback(rankings);
+
+        Iterator<WinningTransaction> relatedPartialTransferItr = relatedPartialTransfer.iterator();
+        while (relatedPartialTransferItr.hasNext()) {
+            WinningTransaction trx = relatedPartialTransferItr.next();
+            if (BooleanUtils.isTrue(trx.getParked())) {
+                unprocessedPartialTransfer.add(trx);
+                relatedPartialTransferItr.remove();
+            }
+        }
 
         if (!relatedPartialTransfer.isEmpty()) {
             int[] affectedRows = winningTransactionDao.deleteTransfer(relatedPartialTransfer);
@@ -168,6 +184,11 @@ class PartialTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
         if (!oldTransfer.isEmpty()) {
             int[] affectedRows = winningTransactionDao.deleteTransfer(oldTransfer);
             checkErrors(oldTransfer.size(), affectedRows, "deleteTransfer");
+        }
+
+        if (!unprocessedPartialTransfer.isEmpty()) {
+            int[] affectedRows = winningTransactionDao.updateUnprocessedPartialTransfer(unprocessedPartialTransfer);
+            checkErrors(unprocessedPartialTransfer.size(), affectedRows, "updateUnprocessedPartialTransfer");
         }
 
         return transactions.size();

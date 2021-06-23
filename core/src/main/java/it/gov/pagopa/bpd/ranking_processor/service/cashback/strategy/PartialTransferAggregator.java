@@ -58,12 +58,13 @@ class PartialTransferAggregator implements AggregatorStrategy {
                         .updateDate(now)
                         .updateUser(RankingProcessorService.PROCESS_NAME);
                 if (newAmountBalance.compareTo(BigDecimal.ZERO) < 0) {
-                    throw new IllegalStateException(String.format("Negative amount balance for transaction with idTrxAcquirer = %s, acquirerCode = %s, acquirerId = %s, trxDate = %s, correlationId = %s",
+                    log.warn("Negative amount balance for transaction with idTrxAcquirer = {}, acquirerCode = {}, acquirerId = {}, trxDate = {}, correlationId = {}",
                             trx.getIdTrxAcquirer(),
                             trx.getAcquirerCode(),
                             trx.getAcquirerId(),
                             trx.getTrxDate(),
-                            trx.getCorrelationId()));
+                            trx.getCorrelationId());
+                    trx.setParked(true);
                 } else if (newAmountBalance.compareTo(BigDecimal.ZERO) == 0) {
                     BigDecimal actualScore = trx.getAmount()
                             .multiply(negativeCashbackMultiplier)

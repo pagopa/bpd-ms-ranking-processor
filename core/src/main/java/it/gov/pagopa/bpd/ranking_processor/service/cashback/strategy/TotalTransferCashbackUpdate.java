@@ -136,6 +136,10 @@ class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
                     if (transferTrx.getAmount().equals(paymentTrx.getAmount())) {
                         relatedTotalTransfer.add(transferTrx);
 
+                    } else if (transferTrx.getAmount().compareTo(paymentTrx.getAmount()) > 0) {
+                        transferTrx.setParked(true);
+                        relatedPartialTransfer.add(transferTrx);
+
                     } else {
                         relatedPartialTransfer.add(transferTrx);
                     }
