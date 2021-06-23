@@ -31,6 +31,7 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
     private static boolean paymentWithSameAmount;
     private static boolean retention;
     private static boolean cashbackError;
+    private static boolean negativeAmountBalance;
 
 
     public PartialTransferCashbackUpdateImplTest() {
@@ -65,6 +66,7 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
         paymentWithSameAmount = false;
         retention = false;
         cashbackError = false;
+        negativeAmountBalance = false;
     }
 
 
@@ -78,9 +80,9 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
                     for (int i = 0; i < pageable.getPageSize(); i++) {
                         String[] ignoredSetters;
                         if (correlationId) {
-                            ignoredSetters = new String[]{"setOperationType", "setAmount"};
+                            ignoredSetters = new String[]{"setOperationType", "setAmount", "setParked"};
                         } else {
-                            ignoredSetters = new String[]{"setOperationType", "setAmount", "setCorrelationId"};
+                            ignoredSetters = new String[]{"setOperationType", "setAmount", "setParked", "setCorrelationId"};
                         }
                         WinningTransaction trx = TestUtils.mockInstance(WinningTransaction.builder()
                                 .operationType("01")
@@ -88,6 +90,9 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
                                 .build(), i, ignoredSetters);
                         if (retention) {
                             trx.setInsertDate(OffsetDateTime.now().minus(Period.ofMonths(1)));
+                        }
+                        if (negativeAmountBalance) {
+                            trx.setParked(true);
                         }
                         transactions.add(trx);
                     }
@@ -100,12 +105,12 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
                             return TestUtils.mockInstance(WinningTransaction.builder()
                                     .operationType("00")
                                     .amount(BigDecimal.ONE)
-                                    .build(), "setOperationType", "setAmount");
+                                    .build(), "setOperationType", "setAmount", "setParked");
                         } else {
                             return TestUtils.mockInstance(WinningTransaction.builder()
                                     .operationType("00")
                                     .amount(BigDecimal.TEN)
-                                    .build(), "setOperationType", "setAmount");
+                                    .build(), "setOperationType", "setAmount", "setParked");
                         }
                     } else {
                         return null;
@@ -117,6 +122,17 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
                 .thenAnswer(invocationOnMock -> {
                     Collection transactions = invocationOnMock.getArgument(0, Collection.class);
                     if (!matchPayment) {
+                        int[] result = new int[transactions.size()];
+                        Arrays.fill(result, 1);
+                        return result;
+                    } else {
+                        return null;
+                    }
+                });
+        when(winningTransactionDaoMock.updateUnprocessedPartialTransfer(any()))
+                .thenAnswer(invocationOnMock -> {
+                    Collection transactions = invocationOnMock.getArgument(0, Collection.class);
+                    if (negativeAmountBalance) {
                         int[] result = new int[transactions.size()];
                         Arrays.fill(result, 1);
                         return result;
@@ -198,6 +214,33 @@ public class PartialTransferCashbackUpdateImplTest extends CashbackUpdateStrateg
                 .updateProcessedTransaction(anyCollection());
         BDDMockito.verify(winningTransactionDaoMock, times(1))
                 .deleteTransfer(anyList());
+        BDDMockito.verify(citizenRankingDaoMock, times(1))
+                .updateCashback(anyList());
+        verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
+    }
+
+
+    @Test
+    public void process_OK_WithCorrIdAndMatchPaymentWithDifferentAmountAndNegativeAmountBalance() {
+        correlationId = true;
+        matchPayment = true;
+        paymentWithSameAmount = false;
+        negativeAmountBalance = true;
+
+        SimplePageRequest pageRequest = SimplePageRequest.of(0, LIMIT);
+        AwardPeriod awardPeriod = AwardPeriod.builder()
+                .awardPeriodId(1L)
+                .build();
+        int processedTrxCount = getCashbackUpdateService().process(awardPeriod, pageRequest);
+
+        Assert.assertSame(LIMIT, processedTrxCount);
+        verifyTrxToProcess(pageRequest, awardPeriod);
+        BDDMockito.verify(winningTransactionDaoMock, times(LIMIT))
+                .findPaymentTrxWithCorrelationId(any());
+        BDDMockito.verify(winningTransactionDaoMock, times(LIMIT))
+                .findProcessedTransferAmount(any());
+        BDDMockito.verify(winningTransactionDaoMock, times(1))
+                .updateUnprocessedPartialTransfer(anyCollection());
         BDDMockito.verify(citizenRankingDaoMock, times(1))
                 .updateCashback(anyList());
         verifyNoMoreInteractions(winningTransactionDaoMock, citizenRankingDaoMock);
