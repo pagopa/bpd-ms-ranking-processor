@@ -144,7 +144,6 @@ stages:
               publishLocation: 'pipeline'
           - task: PublishPipelineArtifact@1
               displayName: 'Publish Artifact manifests TMP'
-              name: 'Publish Artifact manifests TMP'
               condition: and(succeeded(), eq(variables.isToDeploy, true))
               inputs:
                 targetPath: '$(Build.Repository.LocalPath)/target'
