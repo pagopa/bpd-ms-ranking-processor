@@ -143,12 +143,13 @@ stages:
               artifact: 'manifests'
               publishLocation: 'pipeline'
           - task: PublishPipelineArtifact@1
-              displayName: 'Publish Artifact manifests TMP'
-              condition: and(succeeded(), eq(variables.isToDeploy, true))
-              inputs:
-                targetPath: '$(Build.Repository.LocalPath)/target'
-                artifact: 'target'
-                publishLocation: 'pipeline'
+            displayName: 'Publish Artifact manifests TMP'
+            name: 'Publish Artifact manifests TMP'
+            condition: and(succeeded(), eq(variables.isToDeploy, true))
+            inputs:
+              targetPath: '$(Build.Repository.LocalPath)/target'
+              artifact: 'target'
+              publishLocation: 'pipeline'
 
   - stage: 'Deploy'
     displayName: 'Deploy_to_${{ variables.environment }}'
