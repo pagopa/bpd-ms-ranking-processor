@@ -33,18 +33,11 @@ variables:
 
   # Image Repository Name
   imageRepository: '$(K8S_IMAGE_REPOSITORY_NAME)'
-  imagePullSecret: '$(K8S_IMAGE_PULL_SECRET_NAME)'
   deployNamespace: '$(DEPLOY_NAMESPACE)'
-  # settingsXmlRWsecureFileName: '$(SETTINGS_XML_RW_SECURE_FILE_NAME)'
-  # settingsXmlROsecureFileName: '$(SETTINGS_XML_RO_SECURE_FILE_NAME)'
 
   isToDeploy: $[and(ne(variables['Build.Reason'], 'PullRequest'), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release'), startsWith(variables['Build.SourceBranch'], 'refs/heads/hotfix')))]
-  #isDEV: $[eq(variables['Build.SourceBranch'], 'refs/heads/release/st')]
-  #isUAT: $[or(eq(variables['Build.SourceBranch'], 'refs/heads/release/uat'), startsWith(variables['Build.SourceBranch'], 'refs/heads/hotfix'))]
-  #isPROD: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
 
-  ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/release/st') }}:
-    # ${{ if eq(variables.isDEV, true) }}:
+  ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/release-dev') }}:
     environment: 'DEV'
     dockerRegistryServiceConnection: '$(DEV_CONTAINER_REGISTRY_SERVICE_CONN)'
     kubernetesServiceConnection: '$(DEV_KUBERNETES_SERVICE_CONN)'
@@ -53,8 +46,7 @@ variables:
     selfHostedAgentPool: $(DEV_AGENT_POOL)
     mavenGoals: 'package'
     settingsXmlsecureFileName: '$(SETTINGS_XML_RO_SECURE_FILE_NAME)'
-  ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/release/uat'), startsWith(variables['Build.SourceBranch'], 'refs/heads/hotfix')) }}:
-    # ${{ if eq(variables.isUAT, true) }}:
+  ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/release-uat'), startsWith(variables['Build.SourceBranch'], 'refs/heads/hotfix')) }}:
     environment: 'UAT'
     dockerRegistryServiceConnection: '$(UAT_CONTAINER_REGISTRY_SERVICE_CONN)'
     kubernetesServiceConnection: '$(UAT_KUBERNETES_SERVICE_CONN)'
@@ -64,15 +56,14 @@ variables:
     mavenGoals: 'package'
     settingsXmlsecureFileName: '$(SETTINGS_XML_RO_SECURE_FILE_NAME)'
   ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}:
-    # ${{ if eq(variables.isPROD, true) }}:
     environment: 'PROD'
     dockerRegistryServiceConnection: '$(PROD_CONTAINER_REGISTRY_SERVICE_CONN)'
     kubernetesServiceConnection: '$(PROD_KUBERNETES_SERVICE_CONN)'
     containerRegistry: '$(PROD_CONTAINER_REGISTRY_NAME)'
     deployment: deployment-prod
     selfHostedAgentPool: $(PROD_AGENT_POOL)
-    mavenGoals: 'deploy'
-    settingsXmlsecureFileName: '$(SETTINGS_XML_RW_SECURE_FILE_NAME)'
+    mavenGoals: 'package'
+    settingsXmlsecureFileName: '$(SETTINGS_XML_RO_SECURE_FILE_NAME)'
 
 stages:
   - stage: Release
@@ -154,7 +145,7 @@ stages:
 
   - stage: 'Deploy'
     displayName: 'Deploy_to_${{ variables.environment }}'
-    dependsOn: Build
+    dependsOn: [ 'Release', 'Build' ]
     condition: and(succeeded(), eq(variables.isToDeploy, true))
     variables:
       pomversion: $[ stageDependencies.Release.POM.outputs['getpomversion.outputpomversion'] ]
@@ -184,7 +175,5 @@ stages:
                     manifests: |
                       $(Pipeline.Workspace)/manifests/$(deployment).yml
                       $(Pipeline.Workspace)/manifests/service.yml
-                    # imagePullSecrets: |
-                    #   $(imagePullSecret)
                     containers: |
                       $(containerRegistry)/$(imageRepository):$(pomversion)

@@ -4,7 +4,7 @@
 
     <parent>
         <groupId>it.gov.pagopa.bpd.ms</groupId>
-        <version>1.0.5</version>
+        <version>1.1.5</version>
         <artifactId>bpd-ms-starter-parent</artifactId>
     </parent>
 
@@ -13,7 +13,7 @@
     <packaging>pom</packaging>
 
     <properties>
-        <bpd-commons.version>1.1.0</bpd-commons.version>
+        <bpd-commons.version>1.2.1</bpd-commons.version>
     </properties>
 
     <dependencyManagement>
@@ -94,14 +94,14 @@
     <distributionManagement>
         <repository>
             <id>cstar</id>
-            <url>https://pkgs.dev.azure.com/sia-dds/cstar/_packaging/cstar/maven/v1</url>
+            <url>https://pkgs.dev.azure.com/pagopaspa/cstar-projects/_packaging/cstar/maven/v1</url>
         </repository>
     </distributionManagement>
 
     <repositories>
         <repository>
             <id>cstar</id>
-            <url>https://pkgs.dev.azure.com/sia-dds/cstar/_packaging/cstar/maven/v1</url>
+            <url>https://pkgs.dev.azure.com/pagopaspa/cstar-projects/_packaging/cstar/maven/v1</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
