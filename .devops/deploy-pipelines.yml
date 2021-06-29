@@ -24,8 +24,7 @@ resources:
   - repo: self
 
 variables:
-
-  dockerfileRelativePath: 'Dockerfile'
+  dockerfileRelativePath: '$(DOCKERFILE)' # DockerfileV1
 
   # Agent VM image name for Build
 
@@ -34,6 +33,7 @@ variables:
   # Image Repository Name
   imageRepository: '$(K8S_IMAGE_REPOSITORY_NAME)'
   deployNamespace: '$(DEPLOY_NAMESPACE)'
+  settingsXmlROsecureFileName: '$(SETTINGS_XML_RO_SECURE_FILE_NAME)'
 
   isToDeploy: $[and(ne(variables['Build.Reason'], 'PullRequest'), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release'), startsWith(variables['Build.SourceBranch'], 'refs/heads/hotfix')))]
 
@@ -62,8 +62,8 @@ variables:
     containerRegistry: '$(PROD_CONTAINER_REGISTRY_NAME)'
     deployment: deployment-prod
     selfHostedAgentPool: $(PROD_AGENT_POOL)
-    mavenGoals: 'package'
-    settingsXmlsecureFileName: '$(SETTINGS_XML_RO_SECURE_FILE_NAME)'
+    mavenGoals: 'deploy'
+    settingsXmlsecureFileName: '$(SETTINGS_XML_RW_SECURE_FILE_NAME)'
 
 stages:
   - stage: Release
@@ -136,15 +136,16 @@ stages:
                 latest
                 $(pomversion)
           - task: PublishPipelineArtifact@1
-            displayName: 'Publish Artifact manifests'
+            displayName: 'Publish Atrifact manifests'
             condition: and(succeeded(), eq(variables.isToDeploy, true))
             inputs:
               targetPath: '$(Build.Repository.LocalPath)/manifests'
               artifact: 'manifests'
               publishLocation: 'pipeline'
+
   - stage: 'Deploy'
     displayName: 'Deploy_to_${{ variables.environment }}'
-    dependsOn: [ 'Release', 'Build' ]
+    dependsOn: ['Release', 'Build']
     condition: and(succeeded(), eq(variables.isToDeploy, true))
     variables:
       pomversion: $[ stageDependencies.Release.POM.outputs['getpomversion.outputpomversion'] ]
@@ -169,10 +170,9 @@ stages:
                   inputs:
                     action: deploy
                     rolloutStatusTimeout: 120
-                    kubernetesServiceConnection: '${{ variables.kubernetesServiceConnection }}'
+                    kubernetesServiceConnection: ${{ variables.kubernetesServiceConnection }}
                     namespace: '$(deployNamespace)'
                     manifests: |
                       $(Pipeline.Workspace)/manifests/$(deployment).yml
                       $(Pipeline.Workspace)/manifests/service.yml
-                    containers: |
-                      $(containerRegistry)/$(imageRepository):$(pomversion)
+                    containers: '$(containerRegistry)/$(imageRepository):$(pomversion)'
