@@ -26,9 +26,9 @@ public class RankingUpdateStrategyFactoryImplTest {
         BDDMockito.doAnswer(invocationOnMock -> {
             Class argument = invocationOnMock.getArgument(0, Class.class);
             if (ParallelRankingUpdate.class.getName().equals(argument.getName()))
-                return new ParallelRankingUpdate(null);
+                return new ParallelRankingUpdate(null, true);
             else if (SerialRankingUpdate.class.getName().equals(argument.getName()))
-                return new SerialRankingUpdate(null);
+                return new SerialRankingUpdate(null, true);
             else
                 throw new IllegalArgumentException();
         })

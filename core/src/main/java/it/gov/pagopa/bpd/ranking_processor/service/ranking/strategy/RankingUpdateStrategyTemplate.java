@@ -26,20 +26,8 @@ import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingD
 abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
     static final String ERROR_MESSAGE_TEMPLATE = "updateRanking: affected %d rows of %d";
-    protected final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing((CitizenRanking c) -> null == c.getLastTrxTimestamp() ? OffsetDateTime.MIN : c.getLastTrxTimestamp(), Comparator.naturalOrder())
-            .thenComparing((CitizenRanking c) -> {
-                if (null == c.getTimestampTc()) {
-                    OffsetDateTime tcTimestamp = retrieveTcTimestamp(c.getFiscalCode());
-                    if (null == tcTimestamp) {
-                        log.warn(String.format("Citizen timestampTc null for user having fiscalCode = %s", c.getFiscalCode()));
-                        tcTimestamp = OffsetDateTime.MAX;
-                    }
-                    c.setTimestampTc(tcTimestamp);
-                }
-                return c.getTimestampTc();
-            }, Comparator.naturalOrder())
-            .thenComparing(CitizenRanking::getFiscalCode);
 
+    protected final Comparator<CitizenRanking> tieBreak;
     protected int lastAssignedRanking;
     protected final OffsetDateTime startProcess;
     protected final AtomicInteger lastMinTransactionNumber = new AtomicInteger(Integer.MAX_VALUE);
@@ -57,7 +45,8 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
     protected abstract void setRanking(Map<Long, Set<CitizenRanking>> tiedMap, AwardPeriod awardPeriod);
 
 
-    public RankingUpdateStrategyTemplate(CitizenRankingDao citizenRankingDao) {
+    public RankingUpdateStrategyTemplate(CitizenRankingDao citizenRankingDao,
+                                         boolean tieBreakEnabled) {
         if (log.isTraceEnabled()) {
             log.trace("RankingUpdateStrategyTemplate.RankingUpdateStrategyTemplate");
         }
@@ -67,6 +56,25 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
         this.citizenRankingDao = citizenRankingDao;
         this.startProcess = OffsetDateTime.now();
+
+        if (tieBreakEnabled) {
+            tieBreak = Comparator.comparing((CitizenRanking c) -> null == c.getLastTrxTimestamp() ? OffsetDateTime.MIN : c.getLastTrxTimestamp(), Comparator.naturalOrder())
+                    .thenComparing((CitizenRanking c) -> {
+                        if (null == c.getTimestampTc()) {
+                            OffsetDateTime tcTimestamp = retrieveTcTimestamp(c.getFiscalCode());
+                            if (null == tcTimestamp) {
+                                log.warn("Citizen timestampTc null for user having fiscalCode = {}", c.getFiscalCode());
+                                tcTimestamp = OffsetDateTime.MAX;
+                            }
+                            c.setTimestampTc(tcTimestamp);
+                        }
+                        return c.getTimestampTc();
+                    }, Comparator.naturalOrder())
+                    .thenComparing(CitizenRanking::getFiscalCode);
+
+        } else {
+            tieBreak = Comparator.comparing(CitizenRanking::getFiscalCode);
+        }
     }
 
     @Override

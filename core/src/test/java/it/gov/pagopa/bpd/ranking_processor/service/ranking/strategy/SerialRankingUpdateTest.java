@@ -5,7 +5,7 @@ public class SerialRankingUpdateTest extends RankingUpdateStrategyTemplateTest {
     private final RankingUpdateStrategy rankingUpdateStrategy;
 
     public SerialRankingUpdateTest() {
-        this.rankingUpdateStrategy = new SerialRankingUpdate(citizenRankingDaoMock);
+        this.rankingUpdateStrategy = new SerialRankingUpdate(citizenRankingDaoMock, true);
     }
 
     @Override
