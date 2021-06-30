@@ -18,12 +18,14 @@ spec:
     spec:
       containers:
         - name: bpdmsrankingprocessor
-          image: cstaruatregistry.azurecr.io/bpdmsrankingprocessor
+          image: cstaruacr.azurecr.io/bpdmsrankingprocessor
           ports:
             - containerPort: 8080
           envFrom:
             - secretRef:
                 name: postgres-credentials
+            - secretRef:
+                name: application-insights
             - configMapRef:
                 name: eventhub-logging
             - configMapRef:
@@ -61,7 +63,3 @@ spec:
             successThreshold: 1
             failureThreshold: 30
           imagePullPolicy: Always
-      hostAliases:
-        - hostnames:
-            - bpd-event-uat.servicebus.windows.net
-          ip: 10.70.67.5
