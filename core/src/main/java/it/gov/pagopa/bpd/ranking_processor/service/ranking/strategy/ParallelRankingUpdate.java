@@ -27,14 +27,12 @@ public class ParallelRankingUpdate extends RankingUpdateStrategyTemplate {
 
     @Autowired
     public ParallelRankingUpdate(CitizenRankingDao citizenRankingDao,
-                                 @Value("${ranking-update.tie-break.enable}") boolean tieBreakEnabled) {
-        super(citizenRankingDao, tieBreakEnabled);
+                                 @Value("${ranking-update.tie-break.enable}") boolean tieBreakEnabled,
+                                 @Value("${ranking-update.tie-break.limit}") int tieBreakLimit) {
+        super(citizenRankingDao, tieBreakEnabled, tieBreakLimit);
 
         if (log.isTraceEnabled()) {
             log.trace("ParallelRankingUpdate.ParallelRankingUpdate");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("citizenRankingDao = {}", citizenRankingDao);
         }
     }
 

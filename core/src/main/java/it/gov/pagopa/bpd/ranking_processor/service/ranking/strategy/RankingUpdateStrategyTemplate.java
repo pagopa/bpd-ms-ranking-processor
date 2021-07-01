@@ -46,36 +46,37 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
 
     public RankingUpdateStrategyTemplate(CitizenRankingDao citizenRankingDao,
-                                         boolean tieBreakEnabled) {
+                                         boolean tieBreakEnabled,
+                                         int tieBreakLimit) {
         if (log.isTraceEnabled()) {
             log.trace("RankingUpdateStrategyTemplate.RankingUpdateStrategyTemplate");
         }
         if (log.isDebugEnabled()) {
-            log.debug("citizenRankingDao = {}", citizenRankingDao);
+            log.debug("citizenRankingDao = {}, tieBreakEnabled = {}, tieBreakLimit = {}", citizenRankingDao, tieBreakEnabled, tieBreakLimit);
         }
 
         this.citizenRankingDao = citizenRankingDao;
         this.startProcess = OffsetDateTime.now();
 
-        if (tieBreakEnabled) {
-            tieBreak = Comparator.comparing((CitizenRanking c) -> null == c.getLastTrxTimestamp() ? OffsetDateTime.MIN : c.getLastTrxTimestamp(), Comparator.naturalOrder())
-                    .thenComparing((CitizenRanking c) -> {
-                        if (null == c.getTimestampTc()) {
+        tieBreak = Comparator.comparing((CitizenRanking c) -> null == c.getLastTrxTimestamp() ? OffsetDateTime.MIN : c.getLastTrxTimestamp(), Comparator.naturalOrder())
+                .thenComparing((CitizenRanking c) -> {
+                    if (null == c.getTimestampTc()) {
+                        if (tieBreakEnabled || lastAssignedRanking < tieBreakLimit) {
                             OffsetDateTime tcTimestamp = retrieveTcTimestamp(c.getFiscalCode());
                             if (null == tcTimestamp) {
                                 log.warn("Citizen timestampTc null for user having fiscalCode = {}", c.getFiscalCode());
                                 tcTimestamp = OffsetDateTime.MAX;
                             }
                             c.setTimestampTc(tcTimestamp);
+                        } else {
+                            return OffsetDateTime.MAX;
                         }
-                        return c.getTimestampTc();
-                    }, Comparator.naturalOrder())
-                    .thenComparing(CitizenRanking::getFiscalCode);
-
-        } else {
-            tieBreak = Comparator.comparing(CitizenRanking::getFiscalCode);
-        }
+                    }
+                    return c.getTimestampTc();
+                }, Comparator.naturalOrder())
+                .thenComparing(CitizenRanking::getFiscalCode);
     }
+
 
     @Override
     @Transactional("citizenTransactionManager")
