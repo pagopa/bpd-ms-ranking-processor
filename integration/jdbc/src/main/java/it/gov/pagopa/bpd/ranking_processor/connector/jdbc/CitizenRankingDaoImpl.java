@@ -34,13 +34,14 @@ import java.util.List;
 class CitizenRankingDaoImpl implements CitizenRankingDao {
 
     private static final String UPDATE_REDIS_SQL = "UPDATE redis_cache_config SET update_ranking=true, update_ranking_from=CURRENT_TIMESTAMP";
-    private static final String UPDATE_CASHBACK_SQL_TEMPLATE = "update %s bcr set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)";
-    private static final String FINDALL_BY_AWARDPERIOD_AND_UPDATEDATE_SQL_TEMPLATE = "select bcr.fiscal_code_c, bcr.award_period_id_n, bcr.transaction_n, bcr.cashback_n, bcr.ranking_n from %s bcr inner join bpd_citizen.bpd_citizen bc on bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true where bcr.award_period_id_n = ? and coalesce(bcr.update_date_t,'1900-01-01 00:00:00.000'::timestamptz) < ?";
+    private static final String UPDATE_CASHBACK_SQL_TEMPLATE = "update %s bcr set cashback_n = cashback_n + :totalCashback, transaction_n = transaction_n + :transactionNumber, update_date_t = :updateDate, update_user_s = :updateUser, last_trx_timestamp_t = greatest(last_trx_timestamp_t, :lastTrxTimestamp) where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId and exists (select 1 from bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)";
+    private static final String FINDALL_BY_AWARDPERIOD_AND_UPDATEDATE_SQL_TEMPLATE = "select bcr.fiscal_code_c, bcr.award_period_id_n, bcr.transaction_n, bcr.cashback_n, bcr.ranking_n, bcr.last_trx_timestamp_t from %s bcr where bcr.award_period_id_n = ? and coalesce(bcr.update_date_t,'1900-01-01 00:00:00.000'::timestamptz) < ? and exists (select 1 from bpd_citizen.bpd_citizen bc where bc.fiscal_code_s = bcr.fiscal_code_c and bc.enabled_b is true)";
     private static final String UPDATE_RANKING_SQL_TEMPLATE = "update %s bcr set ranking_n = :ranking, update_date_t = :updateDate, update_user_s = :updateUser where fiscal_code_c = :fiscalCode and award_period_id_n = :awardPeriodId";
     private static final String UPDATE_RANKING_EXT_SQL_TEMPLATE = "update %s set ${TOTAL_PARTECIPANTS} ${MIN_TRANSACTION} max_transaction_n = :maxTransactionNumber, ranking_min_n = :minPosition, period_cashback_max_n = :maxPeriodCashback, update_date_t = :updateDate, update_user_s = :updateUser where award_period_id_n = :awardPeriodId";
     private static final String UPDATE_MILESTONE_SQL_TEMPLATE = "SELECT * from %s(?, ?, ?)";
     private static final String UPDATE_RANKING_PROCESSOR_LOCK_SQL = "update bpd_citizen.%s set worker_count = worker_count + :value, status = case when (worker_count + :value) = 0 then 'IDLE' else 'IN_PROGRESS' end, update_user = :updateUser, update_date = CURRENT_TIMESTAMP where process_id = :processId";
     private static final String GET_WORKER_COUNT_SQL = "select worker_count from bpd_ranking_processor_lock where process_id = ?";
+    public static final String GET_USER_TC_TIMESTAMP_SQL = "select timestamp_tc_t from bpd_citizen.bpd_citizen bc where fiscal_code_s = ?";
 
     private final String updateCashbackSql;
     private final String updateRankingSql;
@@ -53,6 +54,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
     private final RowMapperResultSetExtractor<CitizenRanking> findAllResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingMapper());
     private final SimpleJdbcInsertOperations insertRankingOps;
     private final SimpleJdbcInsertOperations insertRankingExtOps;
+    private final RowMapperResultSetExtractor<OffsetDateTime> userTcTimestampResultSetExtractor = new RowMapperResultSetExtractor<>(new CitizenRankingDaoImpl.UserTcTimestampMapper());
 
 
     @Autowired
@@ -72,6 +74,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
 
         String[] rankingColumns = Arrays.stream(CitizenRanking.class.getDeclaredFields())
+                .filter(field -> field.isAnnotationPresent(Column.class))
                 .map(field -> field.getAnnotation(Column.class))
                 .map(Column::value)
                 .toArray(String[]::new);
@@ -254,6 +257,7 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
                     .totalCashback(rs.getBigDecimal("cashback_n"))
                     .transactionNumber(rs.getLong("transaction_n"))
                     .ranking(rs.getLong("ranking_n"))
+                    .lastTrxTimestamp(rs.getObject("last_trx_timestamp_t", OffsetDateTime.class))
                     .build();
         }
     }
@@ -270,14 +274,16 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         MapSqlParameterSource param = new MapSqlParameterSource();
 
         for (Field field : candidate.getClass().getDeclaredFields()) {
-            Column column = field.getAnnotation(Column.class);
+            if(field.isAnnotationPresent(Column.class)){
+                Column column = field.getAnnotation(Column.class);
 
-            if (column != null) {
-                field.setAccessible(true);
-                if (OffsetDateTime.class.isAssignableFrom(field.getType())) {
-                    param.addValue(column.value(), field.get(candidate), JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber());
-                } else {
-                    param.addValue(column.value(), field.get(candidate));
+                if (column != null) {
+                    field.setAccessible(true);
+                    if (OffsetDateTime.class.isAssignableFrom(field.getType())) {
+                        param.addValue(column.value(), field.get(candidate), JDBCType.TIMESTAMP_WITH_TIMEZONE.getVendorTypeNumber());
+                    } else {
+                        param.addValue(column.value(), field.get(candidate));
+                    }
                 }
             }
         }
@@ -335,4 +341,27 @@ class CitizenRankingDaoImpl implements CitizenRankingDao {
         private String updateUser;
     }
 
+    @Override
+    public OffsetDateTime getUserTcTimestamp(String fiscalCode) {
+        if (log.isTraceEnabled()) {
+            log.trace("CitizenRankingDaoImpl.getTcTimestamp");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("fiscalCode = {}", fiscalCode);
+        }
+        List<OffsetDateTime> result = jdbcTemplate.query(connection -> connection.prepareStatement(GET_USER_TC_TIMESTAMP_SQL),
+                preparedStatement -> preparedStatement.setString(1, fiscalCode), userTcTimestampResultSetExtractor
+        );
+        return result != null && result.size() > 0
+                ? result.get(0)
+                : null;
+    }
+
+    @Slf4j
+    static class UserTcTimestampMapper implements RowMapper<OffsetDateTime> {
+
+        public OffsetDateTime mapRow(ResultSet rs, int rowNum) throws SQLException {
+            return rs.getObject("timestamp_tc_t", OffsetDateTime.class);
+        }
+    }
 }

@@ -127,6 +127,15 @@ public class CitizenRankingDaoImplTest extends BaseTest {
         Assert.assertEquals(0, result);
     }
 
+    @Test
+    public void findUserLastPaymentOK() {
+        Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
+                .thenReturn(Collections.singletonList(OffsetDateTime.now()));
+
+        OffsetDateTime result = citizenRankingDao.getUserTcTimestamp("fiscalCode");
+
+        Assert.assertNotNull(result);
+    }
 
     public static class CitizenRankingMapperTest {
 
@@ -144,6 +153,7 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                     .totalCashback(BigDecimal.ONE)
                     .transactionNumber(1L)
                     .ranking(1L)
+                    .lastTrxTimestamp(OffsetDateTime.now())
                     .build();
 
             ResultSet resultSet = Mockito.mock(ResultSet.class);
@@ -158,6 +168,8 @@ public class CitizenRankingDaoImplTest extends BaseTest {
                         .thenReturn(citizenRanking.getTransactionNumber());
                 Mockito.when(resultSet.getLong("ranking_n"))
                         .thenReturn(citizenRanking.getRanking());
+                Mockito.when(resultSet.getObject("trx_timestamp_t", OffsetDateTime.class))
+                        .thenReturn(citizenRanking.getLastTrxTimestamp());
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
                 Assert.fail(throwables.getMessage());
@@ -171,8 +183,36 @@ public class CitizenRankingDaoImplTest extends BaseTest {
             Assert.assertEquals(citizenRanking.getTotalCashback(), result.getTotalCashback());
             Assert.assertEquals(citizenRanking.getTransactionNumber(), result.getTransactionNumber());
             Assert.assertEquals(citizenRanking.getRanking(), result.getRanking());
+            Assert.assertEquals(citizenRanking.getLastTrxTimestamp(), result.getLastTrxTimestamp());
         }
 
+    }
+
+    public static class UserTcTimestampMapperTest {
+
+        private final CitizenRankingDaoImpl.UserTcTimestampMapper userTcTimestampMapper;
+
+        public UserTcTimestampMapperTest() {
+            userTcTimestampMapper = new CitizenRankingDaoImpl.UserTcTimestampMapper();
+        }
+
+        @Test
+        public void mapRowOK() throws SQLException {
+            OffsetDateTime transactionTimestamp = OffsetDateTime.now();
+
+            ResultSet resultSet = Mockito.mock(ResultSet.class);
+            try {
+                Mockito.when(resultSet.getObject("timestamp_tc_t", OffsetDateTime.class))
+                        .thenReturn(transactionTimestamp);
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+                Assert.fail(throwables.getMessage());
+            }
+
+            OffsetDateTime result = userTcTimestampMapper.mapRow(resultSet, 0);
+            Assert.assertNotNull(result);
+            Assert.assertEquals(transactionTimestamp, result);
+        }
     }
 
 }
