@@ -20,7 +20,7 @@ import javax.validation.Valid;
 @Validated
 public interface BpdRankingProcessorController {
 
-    @PostMapping(value = "/", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @PostMapping(value = "/", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     void execute(@RequestBody @Valid RankingProcessorDto rankingProcessorDto);
 }

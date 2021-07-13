@@ -12,7 +12,7 @@ import org.junit.runner.RunWith;
 import org.mockito.BDDMockito;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcSecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
@@ -27,7 +27,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import javax.annotation.PostConstruct;
 
 @RunWith(SpringRunner.class)
-@WebMvcTest(value = {BpdRankingProcessorControllerImpl.class}, excludeAutoConfiguration = MockMvcSecurityAutoConfiguration.class)
+@WebMvcTest(value = {BpdRankingProcessorControllerImpl.class}, excludeAutoConfiguration = SecurityAutoConfiguration.class)
 @ContextConfiguration(classes = {
         BpdRankingProcessorControllerImpl.class,
         DummyConfiguration.class,
@@ -70,8 +70,8 @@ public class BpdRankingProcessorControllerImplTest {
 
         mvc.perform(MockMvcRequestBuilders
                 .post(URL_TEMPLATE_PREFIX + "/")
-                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .accept(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .accept(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(MockMvcResultMatchers.status().is2xxSuccessful())
                 .andReturn();
@@ -84,8 +84,8 @@ public class BpdRankingProcessorControllerImplTest {
 
         mvc.perform(MockMvcRequestBuilders
                 .post(URL_TEMPLATE_PREFIX + "/")
-                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .accept(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .accept(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(MockMvcResultMatchers.status().is5xxServerError())
                 .andReturn();
@@ -95,8 +95,8 @@ public class BpdRankingProcessorControllerImplTest {
     public void execute_KOInvalidRequest() throws Exception {
         mvc.perform(MockMvcRequestBuilders
                 .post(URL_TEMPLATE_PREFIX + "/")
-                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .accept(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .accept(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(null)))
                 .andExpect(MockMvcResultMatchers.status().is4xxClientError())
                 .andReturn();
@@ -109,8 +109,8 @@ public class BpdRankingProcessorControllerImplTest {
 
         mvc.perform(MockMvcRequestBuilders
                 .post(URL_TEMPLATE_PREFIX + "/")
-                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .accept(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .accept(MediaType.APPLICATION_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(MockMvcResultMatchers.status().is4xxClientError())
                 .andReturn();
