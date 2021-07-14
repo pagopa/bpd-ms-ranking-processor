@@ -8,7 +8,7 @@ trigger:
       - master
       - develop
       - release/*
-      - features/*
+      - feature/*
       - hotfix/*
   paths:
     include:
