@@ -55,14 +55,14 @@ variables:
     selfHostedAgentPool: $(UAT_AGENT_POOL)
     mavenGoals: 'package'
     settingsXmlsecureFileName: '$(SETTINGS_XML_RO_SECURE_FILE_NAME)'
-  ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}:
+  ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'),eq(variables['Build.SourceBranch'], 'refs/heads/release-prod')) }}:
     environment: 'PROD'
     dockerRegistryServiceConnection: '$(PROD_CONTAINER_REGISTRY_SERVICE_CONN)'
     kubernetesServiceConnection: '$(PROD_KUBERNETES_SERVICE_CONN)'
     containerRegistry: '$(PROD_CONTAINER_REGISTRY_NAME)'
     deployment: deployment-prod
     selfHostedAgentPool: $(PROD_AGENT_POOL)
-    mavenGoals: 'deploy'
+    mavenGoals: 'package'
     settingsXmlsecureFileName: '$(SETTINGS_XML_RW_SECURE_FILE_NAME)'
 
 stages:
@@ -173,6 +173,6 @@ stages:
                     kubernetesServiceConnection: ${{ variables.kubernetesServiceConnection }}
                     namespace: '$(deployNamespace)'
                     manifests: |
-                      $(Pipeline.Workspace)/manifests/$(deployment).yml
+                      $(Pipeline.Workspace)/manifests/pagoPa/$(deployment).yml
                       $(Pipeline.Workspace)/manifests/service.yml
                     containers: '$(containerRegistry)/$(imageRepository):$(pomversion)'
