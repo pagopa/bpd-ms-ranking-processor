@@ -20,10 +20,6 @@ public class ScheduledTaskTracingAspect {
     public void methodAnnotatedWithScheduled() {
     }
 
-//    @Pointcut("execution(* com.mycompany..*(..))")
-//    public void atExecutionTimeInMyNamespace() {}
-
-    //    @Around("methodAnnotatedWithScheduled() && atExecutionTimeInMyNamespace()")
     @Around("methodAnnotatedWithScheduled()")
     public Object connectionAdvice(ProceedingJoinPoint joinPoint) throws Throwable {
 
