@@ -4,7 +4,7 @@
 
     <parent>
         <groupId>it.gov.pagopa.bpd.ms</groupId>
-        <version>2.0.0-rc1</version>
+        <version>cen-383-rc2</version>
         <artifactId>bpd-ms-starter-parent</artifactId>
     </parent>
 
@@ -13,7 +13,7 @@
     <packaging>pom</packaging>
 
     <properties>
-        <bpd-commons.version>2.0.0-rc1</bpd-commons.version>
+        <bpd-commons.version>cen-383-rc2</bpd-commons.version>
     </properties>
 
     <dependencyManagement>
