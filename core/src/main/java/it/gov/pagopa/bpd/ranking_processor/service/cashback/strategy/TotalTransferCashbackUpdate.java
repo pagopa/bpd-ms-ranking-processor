@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +38,7 @@ import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.WinningTransact
 class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
 
     private final int dataExtractionLimit;
+    private final Period maxDepth;
     private final OffsetDateTime startProcess;
 
 
@@ -44,11 +46,13 @@ class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
     public TotalTransferCashbackUpdate(WinningTransactionDao winningTransactionDao,
                                        CitizenRankingDao citizenRankingDao,
                                        BeanFactory beanFactory,
-                                       @Value("${cashback-update.total-transfer.data-extraction.limit}") int dataExtractionLimit) {
+                                       @Value("${cashback-update.total-transfer.data-extraction.limit}") int dataExtractionLimit,
+                                       @Value("${cashback-update.total-transfer.max-depth}") Period maxDepth) {
         super(winningTransactionDao,
                 citizenRankingDao,
                 beanFactory.getBean(CommonAggregator.class));
         this.dataExtractionLimit = dataExtractionLimit;
+        this.maxDepth = maxDepth;
         this.startProcess = OffsetDateTime.now();
     }
 
@@ -88,45 +92,57 @@ class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
         List<WinningTransaction> unrelatedTransfer = new ArrayList<>();
         List<WinningTransaction> relatedPartialTransfer = new ArrayList<>();
         List<WinningTransaction> relatedTotalTransfer = new ArrayList<>();
+        List<WinningTransaction> oldTransfer = new ArrayList<>();
+
+        OffsetDateTime max = OffsetDateTime.now().minus(maxDepth);
 
         for (WinningTransaction transferTrx : transactions) {
-            transferTrx.setUpdateDate(startProcess);
-            transferTrx.setUpdateUser(RankingProcessorService.PROCESS_NAME);
+            if (transferTrx.getInsertDate().isBefore(max)) {
+                oldTransfer.add(transferTrx);
 
-            WinningTransaction paymentTrx;
-            WinningTransaction.FilterCriteria filterCriteria = new WinningTransaction.FilterCriteria();
-            filterCriteria.setAwardPeriodId(awardPeriod.getAwardPeriodId());
-            filterCriteria.setHpan(transferTrx.getHpan());
-            filterCriteria.setAcquirerCode(transferTrx.getAcquirerCode());
-            filterCriteria.setAcquirerId(transferTrx.getAcquirerId());
-            if (StringUtils.isBlank(transferTrx.getCorrelationId())) {
-                filterCriteria.setAmount(transferTrx.getAmount());
-                filterCriteria.setMerchantId(transferTrx.getMerchantId());
-                filterCriteria.setTerminalId(transferTrx.getTerminalId());
-                paymentTrx = winningTransactionDao.findPaymentTrxWithoutCorrelationId(filterCriteria);
             } else {
-                filterCriteria.setCorrelationId(transferTrx.getCorrelationId());
-                try {
-                    paymentTrx = winningTransactionDao.findPaymentTrxWithCorrelationId(filterCriteria);
-                } catch (IncorrectResultSizeDataAccessException e) {
-                    log.warn(String.format("Failed to match transfer with correlation_id '%s': %s",
-                            transferTrx.getCorrelationId(),
-                            e.getMessage()));
-                    transferTrx.setParked(true);
-                    paymentTrx = null;
+                transferTrx.setUpdateDate(startProcess);
+                transferTrx.setUpdateUser(RankingProcessorService.PROCESS_NAME);
+
+                WinningTransaction paymentTrx;
+                WinningTransaction.FilterCriteria filterCriteria = new WinningTransaction.FilterCriteria();
+                filterCriteria.setAwardPeriodId(awardPeriod.getAwardPeriodId());
+                filterCriteria.setHpan(transferTrx.getHpan());
+                filterCriteria.setAcquirerCode(transferTrx.getAcquirerCode());
+                filterCriteria.setAcquirerId(transferTrx.getAcquirerId());
+                if (StringUtils.isBlank(transferTrx.getCorrelationId())) {
+                    filterCriteria.setAmount(transferTrx.getAmount());
+                    filterCriteria.setMerchantId(transferTrx.getMerchantId());
+                    filterCriteria.setTerminalId(transferTrx.getTerminalId());
+                    paymentTrx = winningTransactionDao.findPaymentTrxWithoutCorrelationId(filterCriteria);
+                } else {
+                    filterCriteria.setCorrelationId(transferTrx.getCorrelationId());
+                    try {
+                        paymentTrx = winningTransactionDao.findPaymentTrxWithCorrelationId(filterCriteria);
+                    } catch (IncorrectResultSizeDataAccessException e) {
+                        log.warn(String.format("Failed to match transfer with correlation_id '%s': %s",
+                                transferTrx.getCorrelationId(),
+                                e.getMessage()));
+                        transferTrx.setParked(true);
+                        paymentTrx = null;
+                    }
                 }
-            }
 
-            if (paymentTrx == null) {
-                unrelatedTransfer.add(transferTrx);
-
-            } else {
-
-                if (transferTrx.getAmount().equals(paymentTrx.getAmount())) {
-                    relatedTotalTransfer.add(transferTrx);
+                if (paymentTrx == null) {
+                    unrelatedTransfer.add(transferTrx);
 
                 } else {
-                    relatedPartialTransfer.add(transferTrx);
+
+                    if (transferTrx.getAmount().equals(paymentTrx.getAmount())) {
+                        relatedTotalTransfer.add(transferTrx);
+
+                    } else if (transferTrx.getAmount().compareTo(paymentTrx.getAmount()) > 0) {
+                        transferTrx.setParked(true);
+                        relatedPartialTransfer.add(transferTrx);
+
+                    } else {
+                        relatedPartialTransfer.add(transferTrx);
+                    }
                 }
             }
         }
@@ -135,7 +151,10 @@ class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
         updateCashback(rankings);
 
         if (!relatedTotalTransfer.isEmpty()) {
-            int[] affectedRows = winningTransactionDao.updateProcessedTransaction(relatedTotalTransfer);
+            int[] affectedRows = winningTransactionDao.deleteTransfer(relatedTotalTransfer);
+            checkErrors(relatedTotalTransfer.size(), affectedRows, "deleteTransfer");
+
+            affectedRows = winningTransactionDao.updateProcessedTransaction(relatedTotalTransfer);
             checkErrors(relatedTotalTransfer.size(), affectedRows, "updateProcessedTransaction");
         }
 
@@ -147,6 +166,11 @@ class TotalTransferCashbackUpdate extends CashbackUpdateStrategyTemplate {
         if (!unrelatedTransfer.isEmpty()) {
             int[] affectedRows = winningTransactionDao.updateUnrelatedTransfer(unrelatedTransfer);
             checkErrors(unrelatedTransfer.size(), affectedRows, "updateUnrelatedTransfer");
+        }
+
+        if (!oldTransfer.isEmpty()) {
+            int[] affectedRows = winningTransactionDao.deleteTransfer(oldTransfer);
+            checkErrors(oldTransfer.size(), affectedRows, "deleteTransfer");
         }
 
         return transactions.size();

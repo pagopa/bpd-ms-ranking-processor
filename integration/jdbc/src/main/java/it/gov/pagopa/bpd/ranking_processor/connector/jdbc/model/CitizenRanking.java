@@ -1,6 +1,7 @@
 package it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model;
 
 import lombok.*;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Column;
 
 import java.math.BigDecimal;
@@ -31,6 +32,11 @@ public class CitizenRanking {
     @Column("update_user_s")
     private String updateUser;
 
+    @Column("last_trx_timestamp_t")
+    private OffsetDateTime lastTrxTimestamp;
+
+    @Transient
+    private OffsetDateTime timestampTc;
 
     @Data
     @AllArgsConstructor

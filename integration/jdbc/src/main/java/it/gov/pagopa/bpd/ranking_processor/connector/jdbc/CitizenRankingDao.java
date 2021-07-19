@@ -41,6 +41,8 @@ public interface CitizenRankingDao {
 
     int updateMilestone(Integer offset, Integer limit, OffsetDateTime timestamp);
 
+    OffsetDateTime getUserTcTimestamp(String fiscalCode);
+
     enum RankingProcess {
         UPDATE_CASHBACK,
         UPDATE_CASHBACK_PAYMENT,

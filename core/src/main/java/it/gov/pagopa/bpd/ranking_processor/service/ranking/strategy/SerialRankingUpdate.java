@@ -6,6 +6,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.CitizenRanking;
 import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -22,14 +23,13 @@ import java.util.stream.Collectors;
 public class SerialRankingUpdate extends RankingUpdateStrategyTemplate {
 
     @Autowired
-    public SerialRankingUpdate(CitizenRankingDao citizenRankingDao) {
-        super(citizenRankingDao);
+    public SerialRankingUpdate(CitizenRankingDao citizenRankingDao,
+                               @Value("${ranking-update.tie-break.enable}") boolean tieBreakEnabled,
+                               @Value("${ranking-update.tie-break.limit}") int tieBreakLimit) {
+        super(citizenRankingDao, tieBreakEnabled, tieBreakLimit);
 
         if (log.isTraceEnabled()) {
             log.trace("SerialRankingUpdate.SerialRankingUpdate");
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("citizenRankingDao = {}", citizenRankingDao);
         }
     }
 
@@ -70,7 +70,7 @@ public class SerialRankingUpdate extends RankingUpdateStrategyTemplate {
         return citizenRankings.stream()
                 .collect(Collectors.groupingBy(CitizenRanking::getTransactionNumber,
                         () -> new TreeMap<>(Comparator.reverseOrder()),
-                        Collectors.toCollection(() -> new TreeSet<>(TIE_BREAK))));
+                        Collectors.toCollection(() -> new TreeSet<>(tieBreak))));
     }
 
 }

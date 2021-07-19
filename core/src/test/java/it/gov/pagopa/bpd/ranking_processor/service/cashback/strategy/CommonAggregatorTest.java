@@ -7,6 +7,7 @@ import it.gov.pagopa.bpd.ranking_processor.service.RankingProcessorService;
 import org.junit.Test;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.*;
 
 import static org.junit.Assert.*;
@@ -42,6 +43,7 @@ public abstract class CommonAggregatorTest extends AggregatorTest {
             assertTrue(citizenRanking.getTransactionNumber() < 0);
             assertEquals(fiscalCode2ExpectationMap.get(citizenRanking.getFiscalCode()).getTotalCashback(), citizenRanking.getTotalCashback());
             assertEquals(fiscalCode2ExpectationMap.get(citizenRanking.getFiscalCode()).getTransactionNumber(), citizenRanking.getTransactionNumber());
+            assertNull(citizenRanking.getLastTrxTimestamp());
         });
     }
 
@@ -91,6 +93,14 @@ public abstract class CommonAggregatorTest extends AggregatorTest {
 
         HashMap<String, Expectation> fiscalCode2ExpectationMap = new HashMap<>();
         List<WinningTransaction> winningTransactions = buildTransactions(fiscalCode2ExpectationMap, maxCashbackPerTrx, "00");
+        Map<String, OffsetDateTime> maxTrxTimestampMap = new HashMap<>();
+        int count=0;
+        for (WinningTransaction winningTransaction : winningTransactions) {
+            winningTransaction.setTrxDate(OffsetDateTime.now().plusDays(count++));
+            if(!maxTrxTimestampMap.containsKey(winningTransaction.getFiscalCode()) || winningTransaction.getTrxDate().isAfter(maxTrxTimestampMap.get(winningTransaction.getFiscalCode()))){
+                maxTrxTimestampMap.put(winningTransaction.getFiscalCode(), winningTransaction.getTrxDate());
+            }
+        }
 
         Collection<CitizenRanking> rankings = aggregator.aggregate(awardPeriod, winningTransactions);
 
@@ -103,6 +113,7 @@ public abstract class CommonAggregatorTest extends AggregatorTest {
             assertTrue(citizenRanking.getTransactionNumber() > 0);
             assertEquals(fiscalCode2ExpectationMap.get(citizenRanking.getFiscalCode()).getTotalCashback(), citizenRanking.getTotalCashback());
             assertEquals(fiscalCode2ExpectationMap.get(citizenRanking.getFiscalCode()).getTransactionNumber(), citizenRanking.getTransactionNumber());
+            assertEquals(maxTrxTimestampMap.get(citizenRanking.getFiscalCode()),citizenRanking.getLastTrxTimestamp());
         });
     }
 

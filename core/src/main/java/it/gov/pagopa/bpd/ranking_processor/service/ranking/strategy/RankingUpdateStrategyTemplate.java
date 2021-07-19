@@ -26,8 +26,8 @@ import static it.gov.pagopa.bpd.ranking_processor.connector.jdbc.CitizenRankingD
 abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
     static final String ERROR_MESSAGE_TEMPLATE = "updateRanking: affected %d rows of %d";
-    protected static final Comparator<CitizenRanking> TIE_BREAK = Comparator.comparing(CitizenRanking::getFiscalCode);
 
+    protected final Comparator<CitizenRanking> tieBreak;
     protected int lastAssignedRanking;
     protected final OffsetDateTime startProcess;
     protected final AtomicInteger lastMinTransactionNumber = new AtomicInteger(Integer.MAX_VALUE);
@@ -45,17 +45,38 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
     protected abstract void setRanking(Map<Long, Set<CitizenRanking>> tiedMap, AwardPeriod awardPeriod);
 
 
-    public RankingUpdateStrategyTemplate(CitizenRankingDao citizenRankingDao) {
+    public RankingUpdateStrategyTemplate(CitizenRankingDao citizenRankingDao,
+                                         boolean tieBreakEnabled,
+                                         int tieBreakLimit) {
         if (log.isTraceEnabled()) {
             log.trace("RankingUpdateStrategyTemplate.RankingUpdateStrategyTemplate");
         }
         if (log.isDebugEnabled()) {
-            log.debug("citizenRankingDao = {}", citizenRankingDao);
+            log.debug("citizenRankingDao = {}, tieBreakEnabled = {}, tieBreakLimit = {}", citizenRankingDao, tieBreakEnabled, tieBreakLimit);
         }
 
         this.citizenRankingDao = citizenRankingDao;
         this.startProcess = OffsetDateTime.now();
+
+        tieBreak = Comparator.comparing((CitizenRanking c) -> null == c.getLastTrxTimestamp() ? OffsetDateTime.MIN : c.getLastTrxTimestamp(), Comparator.naturalOrder())
+                .thenComparing((CitizenRanking c) -> {
+                    if (null == c.getTimestampTc()) {
+                        if (tieBreakEnabled || lastAssignedRanking < tieBreakLimit) {
+                            OffsetDateTime tcTimestamp = retrieveTcTimestamp(c.getFiscalCode());
+                            if (null == tcTimestamp) {
+                                log.warn("Citizen timestampTc null for user having fiscalCode = {}", c.getFiscalCode());
+                                tcTimestamp = OffsetDateTime.MAX;
+                            }
+                            c.setTimestampTc(tcTimestamp);
+                        } else {
+                            return OffsetDateTime.MAX;
+                        }
+                    }
+                    return c.getTimestampTc();
+                }, Comparator.naturalOrder())
+                .thenComparing(CitizenRanking::getFiscalCode);
     }
+
 
     @Override
     @Transactional("citizenTransactionManager")
@@ -176,4 +197,7 @@ abstract class RankingUpdateStrategyTemplate implements RankingUpdateStrategy {
 
     }
 
+    protected OffsetDateTime retrieveTcTimestamp(String fiscalCode) {
+        return citizenRankingDao.getUserTcTimestamp(fiscalCode);
+    }
 }

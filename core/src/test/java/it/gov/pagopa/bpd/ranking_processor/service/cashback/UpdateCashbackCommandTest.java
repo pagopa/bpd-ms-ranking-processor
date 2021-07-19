@@ -21,10 +21,9 @@ public class UpdateCashbackCommandTest {
 
     private static boolean registerWorkerResult;
     private static boolean unregisterWorkerResult;
-    private static boolean skipPartialTransfer;
     private static boolean deadLock;
     private static boolean retry;
-    private final UpdateCashbackCommand updateCashbackCommand;
+    private UpdateCashbackCommand updateCashbackCommand;
     private final CitizenRankingDao citizenRankingDaoMock;
     private final CashbackUpdateStrategyFactory strategyFactory;
     private final CashbackUpdateStrategy updateStrategyMock;
@@ -36,7 +35,7 @@ public class UpdateCashbackCommandTest {
         when(citizenRankingDaoMock.unregisterWorker(any()))
                 .thenAnswer(invocationOnMock -> unregisterWorkerResult ? 1 : -1);
         when(citizenRankingDaoMock.getWorkerCount(any()))
-                .thenAnswer(invocationOnMock -> skipPartialTransfer ? 1 : 0);
+                .thenReturn(0);
 
         updateStrategyMock = mock(CashbackUpdateStrategy.class);
         will(invocationOnMock -> {
@@ -61,7 +60,6 @@ public class UpdateCashbackCommandTest {
     public void setUp() {
         registerWorkerResult = true;
         unregisterWorkerResult = true;
-        skipPartialTransfer = false;
         deadLock = false;
         retry = false;
     }
@@ -81,6 +79,7 @@ public class UpdateCashbackCommandTest {
         verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PAYMENT));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
@@ -106,6 +105,7 @@ public class UpdateCashbackCommandTest {
         verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PAYMENT));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
@@ -132,6 +132,7 @@ public class UpdateCashbackCommandTest {
         verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PAYMENT));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
@@ -142,8 +143,60 @@ public class UpdateCashbackCommandTest {
 
 
     @Test
-    public void execute_OkSkipPartialTransfer() {
-        skipPartialTransfer = true;
+    public void execute_OkSkipTotalTransferDueToAlreadyProcessing() {
+        when(citizenRankingDaoMock.getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER)))
+                .thenReturn(1);
+        updateCashbackCommand = new UpdateCashbackCommand(strategyFactory, citizenRankingDaoMock, MAX_RETRY, true);
+
+        updateCashbackCommand.execute(null, null);
+
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK), eq(false));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PAYMENT), eq(false));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_PAYMENT));
+        verify(citizenRankingDaoMock, times(2)).getWorkerCount(eq(UPDATE_CASHBACK_PAYMENT));
+        verify(citizenRankingDaoMock, times(2)).getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
+        verify(updateStrategyMock, times(TransactionType.values().length - 2)).process(any(), any());
+        verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
+        verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
+    }
+
+
+    @Test
+    public void execute_OkSkipTotalTransferDueToExclusiveLock() {
+        when(citizenRankingDaoMock.registerWorker(eq(UPDATE_CASHBACK_TOTAL_TRANSFER), eq(true)))
+                .thenReturn(0);
+
+        updateCashbackCommand = new UpdateCashbackCommand(strategyFactory, citizenRankingDaoMock, MAX_RETRY, true);
+
+        updateCashbackCommand.execute(null, null);
+
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK), eq(false));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PAYMENT), eq(false));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_TOTAL_TRANSFER), eq(true));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER), eq(true));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_PAYMENT));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
+        verify(citizenRankingDaoMock, times(2)).getWorkerCount(eq(UPDATE_CASHBACK_PAYMENT));
+        verify(citizenRankingDaoMock, times(2)).getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
+        verify(updateStrategyMock, times(TransactionType.values().length - 1)).process(any(), any());
+        verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
+        verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
+    }
+
+
+    @Test
+    public void execute_OkSkipPartialTransferDueToPaymentsNotCompleted() {
+        when(citizenRankingDaoMock.getWorkerCount(eq(UPDATE_CASHBACK_PAYMENT)))
+                .thenReturn(1);
 
         updateCashbackCommand.execute(null, null);
 
@@ -157,6 +210,32 @@ public class UpdateCashbackCommandTest {
         verify(citizenRankingDaoMock, never()).unregisterWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
         verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PAYMENT));
         verify(citizenRankingDaoMock, never()).getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
+        verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));
+        verify(updateStrategyMock, times(TransactionType.values().length - 1)).process(any(), any());
+        verify(updateStrategyMock, atLeastOnce()).getDataExtractionLimit();
+        verifyNoMoreInteractions(citizenRankingDaoMock, strategyFactory, updateStrategyMock);
+    }
+
+
+    @Test
+    public void execute_OkSkipPartialTransferDueToExclusiveLock() {
+        when(citizenRankingDaoMock.registerWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER), eq(true)))
+                .thenReturn(0);
+
+        updateCashbackCommand.execute(null, null);
+
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK), eq(false));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PAYMENT), eq(false));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_TOTAL_TRANSFER), eq(false));
+        verify(citizenRankingDaoMock, times(1)).registerWorker(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER), eq(true));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_PAYMENT));
+        verify(citizenRankingDaoMock, times(1)).unregisterWorker(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PAYMENT));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_TOTAL_TRANSFER));
+        verify(citizenRankingDaoMock, times(1)).getWorkerCount(eq(UPDATE_CASHBACK_PARTIAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PAYMENT));
         verify(strategyFactory, times(1)).create(eq(TransactionType.TOTAL_TRANSFER));
         verify(strategyFactory, times(1)).create(eq(TransactionType.PARTIAL_TRANSFER));

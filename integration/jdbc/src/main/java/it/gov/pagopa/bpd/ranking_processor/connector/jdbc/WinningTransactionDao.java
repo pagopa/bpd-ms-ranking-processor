@@ -4,6 +4,7 @@ import it.gov.pagopa.bpd.ranking_processor.connector.jdbc.model.WinningTransacti
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 
@@ -25,13 +26,15 @@ public interface WinningTransactionDao {
 
     List<WinningTransaction> findTransferToProcess(WinningTransaction.FilterCriteria filterCriteria, Pageable pageable);
 
-//    List<WinningTransaction> findTotalTransferToProcess(Long awardPeriodId, Pageable pageable);
-
-    List<WinningTransaction> findPartialTranferToProcess(Long awardPeriodId, Pageable pageable);
+    List<WinningTransaction> findPartialTransferToProcess(WinningTransaction.FilterCriteria filterCriteria, Pageable pageable);
 
     int[] updateProcessedTransaction(Collection<WinningTransaction> winningTransactionIds);
 
     int[] updateUnrelatedTransfer(Collection<WinningTransaction> winningTransactions);
 
     int[] updateUnprocessedPartialTransfer(Collection<WinningTransaction> winningTransactions);
+
+    BigDecimal findProcessedTransferAmount(WinningTransaction.FilterCriteria filterCriteria);
+
+    int[] deleteTransfer(List<WinningTransaction> winningTransactions);
 }

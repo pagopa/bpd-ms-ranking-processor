@@ -72,8 +72,7 @@ abstract class CashbackUpdateStrategyTemplate implements CashbackUpdateStrategy 
 
 
     protected List<CitizenRanking> aggregate(AwardPeriod awardPeriod, List<WinningTransaction> transactions) {
-        List<CitizenRanking> rankings = new ArrayList<>(aggregatorStrategy.aggregate(awardPeriod, transactions));
-        return rankings;
+        return new ArrayList<>(aggregatorStrategy.aggregate(awardPeriod, transactions));
     }
 
 

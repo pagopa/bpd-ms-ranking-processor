@@ -19,8 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doThrow;
 
 public class WinningTransactionDaoImplTest extends BaseTest {
@@ -31,7 +30,7 @@ public class WinningTransactionDaoImplTest extends BaseTest {
 
     public WinningTransactionDaoImplTest() {
         jdbcTemplateMock = Mockito.mock(JdbcTemplate.class);
-        winningWinningTransactionDao = new WinningTransactionDaoImpl(jdbcTemplateMock, true, "elab_ranking_b", "1 month");
+        winningWinningTransactionDao = new WinningTransactionDaoImpl(jdbcTemplateMock, true, "elab_ranking_b", "bpd_winning_transaction_transfer");
     }
 
 
@@ -98,6 +97,32 @@ public class WinningTransactionDaoImplTest extends BaseTest {
         Assert.assertNull(transaction);
     }
 
+
+    @Test
+    public void findProcessedTranferAmountOK_found() {
+        Mockito.when(jdbcTemplateMock.queryForObject(anyString(), eq(BigDecimal.class), any()))
+                .thenReturn(BigDecimal.TEN);
+
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        BigDecimal processedTranferAmount = winningWinningTransactionDao.findProcessedTransferAmount(filterCriteria);
+
+        Assert.assertNotNull(processedTranferAmount);
+        Assert.assertEquals(BigDecimal.TEN, processedTranferAmount);
+    }
+
+
+    @Test
+    public void findProcessedTranferAmountOK_notFound() {
+        doThrow(EmptyResultDataAccessException.class)
+                .when(jdbcTemplateMock).queryForObject(anyString(), eq(BigDecimal.class), any());
+
+        WinningTransaction.FilterCriteria filterCriteria = TestUtils.mockInstance(new WinningTransaction.FilterCriteria());
+        BigDecimal processedTranferAmount = winningWinningTransactionDao.findProcessedTransferAmount(filterCriteria);
+
+        Assert.assertNull(processedTranferAmount);
+    }
+
+
     @Test
     public void findPaymentTrxWithoutCorrelationIdOK_found() {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
@@ -153,7 +178,11 @@ public class WinningTransactionDaoImplTest extends BaseTest {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        List<WinningTransaction> transactions = winningWinningTransactionDao.findPartialTranferToProcess(1L,
+        WinningTransaction.FilterCriteria filterCriteria = new WinningTransaction.FilterCriteria();
+        filterCriteria.setAwardPeriodId(1L);
+        filterCriteria.setUpdateDate(OffsetDateTime.now());
+
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findPartialTransferToProcess(filterCriteria,
                 PageRequest.of(0, 1));
 
         Assert.assertNotNull(transactions);
@@ -165,7 +194,11 @@ public class WinningTransactionDaoImplTest extends BaseTest {
         Mockito.when(jdbcTemplateMock.query(any(PreparedStatementCreator.class), any(PreparedStatementSetter.class), any(ResultSetExtractor.class)))
                 .thenReturn(Collections.emptyList());
 
-        List<WinningTransaction> transactions = winningWinningTransactionDao.findPartialTranferToProcess(1L,
+        WinningTransaction.FilterCriteria filterCriteria = new WinningTransaction.FilterCriteria();
+        filterCriteria.setAwardPeriodId(1L);
+        filterCriteria.setUpdateDate(OffsetDateTime.now());
+
+        List<WinningTransaction> transactions = winningWinningTransactionDao.findPartialTransferToProcess(filterCriteria,
                 null);
 
         Assert.assertNotNull(transactions);
@@ -179,6 +212,18 @@ public class WinningTransactionDaoImplTest extends BaseTest {
                 .thenReturn(new int[]{});
 
         int[] affectedRows = winningWinningTransactionDao.updateProcessedTransaction(Collections.emptyList());
+
+        Assert.assertNotNull(affectedRows);
+        Assert.assertEquals(0, affectedRows.length);
+    }
+
+
+    @Test
+    public void deleteTransferOK() {
+        Mockito.when(jdbcTemplateMock.batchUpdate(anyString(), any(BatchPreparedStatementSetter.class)))
+                .thenReturn(new int[]{});
+
+        int[] affectedRows = winningWinningTransactionDao.deleteTransfer(Collections.emptyList());
 
         Assert.assertNotNull(affectedRows);
         Assert.assertEquals(0, affectedRows.length);
