@@ -37,7 +37,7 @@ variables:
 
   isToDeploy: $[and(ne(variables['Build.Reason'], 'PullRequest'), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release'), startsWith(variables['Build.SourceBranch'], 'refs/heads/hotfix')))]
 
-  ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/release-dev') }}:
+  ${{ if startsWith(variables['Build.SourceBranch'], 'refs/heads/release-dev') }}:
     environment: 'DEV'
     dockerRegistryServiceConnection: '$(DEV_CONTAINER_REGISTRY_SERVICE_CONN)'
     kubernetesServiceConnection: '$(DEV_KUBERNETES_SERVICE_CONN)'
@@ -46,7 +46,7 @@ variables:
     selfHostedAgentPool: $(DEV_AGENT_POOL)
     mavenGoals: 'package'
     settingsXmlsecureFileName: '$(SETTINGS_XML_RO_SECURE_FILE_NAME)'
-  ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/release-uat'), startsWith(variables['Build.SourceBranch'], 'refs/heads/hotfix')) }}:
+  ${{ if or(startsWith(variables['Build.SourceBranch'], 'refs/heads/release-uat'), startsWith(variables['Build.SourceBranch'], 'refs/heads/hotfix')) }}:
     environment: 'UAT'
     dockerRegistryServiceConnection: '$(UAT_CONTAINER_REGISTRY_SERVICE_CONN)'
     kubernetesServiceConnection: '$(UAT_KUBERNETES_SERVICE_CONN)'
