@@ -15,11 +15,11 @@ import java.util.List;
 @FeignClient(name = "${rest-client.award-period.serviceCode}", url = "${rest-client.award-period.base-url}")
 public interface AwardPeriodRestClient {
 
-    @GetMapping(value = "${rest-client.award-period.actives.url}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = "${rest-client.award-period.actives.url}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     List<AwardPeriod> getActiveAwardPeriods();
 
-    @GetMapping(value = "${rest-client.award-period.findById.url}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = "${rest-client.award-period.findById.url}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     AwardPeriod findById(@PathVariable("id") long awardPeriodId);
 
