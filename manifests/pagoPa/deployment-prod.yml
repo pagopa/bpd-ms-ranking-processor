@@ -62,5 +62,5 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             failureThreshold: 30
-            imagePullPolicy: Always
+          imagePullPolicy: Always
 
