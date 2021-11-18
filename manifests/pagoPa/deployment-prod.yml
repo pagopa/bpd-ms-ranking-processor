@@ -34,6 +34,13 @@ spec:
                 name: rest-client
             - configMapRef:
                 name: jvm
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+            requests:
+              cpu: 200m
+              memory: 600Mi
           livenessProbe:
             httpGet:
               path: /actuator/health
